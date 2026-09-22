@@ -1,9 +1,5 @@
-// renderer.rs
-
 use eframe::egui;
 use eframe::egui_wgpu::{self, CallbackResources, CallbackTrait};
-
-// --- 1. Vertex Data ---
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -25,14 +21,10 @@ impl Vertex {
     }
 }
 
-// --- 2. GPU Resources (Stored inside egui) ---
-
 pub struct RoomRenderResources {
     pub pipeline: wgpu::RenderPipeline,
     pub vertex_buffer: wgpu::Buffer,
 }
-
-// --- 3. The Callback (The Bridge) ---
 
 pub struct RoomRenderCallback {
     pub extracted_vertices: Vec<Vertex>,
@@ -72,20 +64,16 @@ impl CallbackTrait for RoomRenderCallback {
     }
 }
 
-// --- 4. The Stateless Renderer API ---
-
-/// A stateless namespace struct for grouping wgpu functionality.
 pub struct Renderer;
 
 impl Renderer {
-    /// Called ONCE at app startup to allocate GPU resources.
     pub fn init(cc: &eframe::CreationContext) {
         let wgpu_state = cc.wgpu_render_state.as_ref().expect("wgpu not enabled");
         let device = &wgpu_state.device;
 
         let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Room Geometry Buffer"),
-            size: 1024 * 1024, // 1MB buffer capacity
+            size: 1024 * 1024,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -130,7 +118,7 @@ impl Renderer {
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None, // Disables multiview, fixing the NonZero<u32> error
+            multiview_mask: None,
             cache: None,
         });
 
@@ -144,12 +132,8 @@ impl Renderer {
             });
     }
 
-    /// Called EVERY FRAME to inject the 3D draw commands into the egui UI.
     pub fn show(ui: &mut egui::Ui, extracted_vertices: Vec<Vertex>) {
-        let (rect, _response) = ui.allocate_exact_size(
-            ui.available_size(),
-            egui::Sense::drag(), // Allows for future camera dragging
-        );
+        let (rect, _response) = ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
 
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
