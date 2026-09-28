@@ -2,7 +2,6 @@ use eframe::{CreationContext, NativeOptions};
 use sound_raytracing::RaytraceApp;
 
 fn main() -> eframe::Result {
-    // test commit
     env_logger::init();
 
     let native_options: NativeOptions = NativeOptions {
