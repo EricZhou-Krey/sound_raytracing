@@ -141,3 +141,9 @@ impl Renderer {
         ));
     }
 }
+
+// Surface, windowing and etc logic handled outside of the egui eframe application reading through
+// it seems the key take aways is to grab the instance to find the device, adapter, surface and etc
+// to eventually define a texture that is stored in VRAM that is presented to the surface (view is
+// a lens into the data texture is the data itself) and a command buffer is used to assign what to
+// do to the data each frame this operations are defined by the shader and ... pipeline reading now
