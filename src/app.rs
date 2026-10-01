@@ -1,13 +1,7 @@
+use crate::renderer::Renderer;
 use bevy_ecs::world::{Mut, World};
 use eframe::CreationContext;
 use rook_terminal::{command::HelpCommand, Terminal, TerminalCommandEvent, TerminalWorldExtension};
-
-use crate::renderer::Renderer;
-
-pub mod command;
-pub mod component;
-pub mod renderer;
-pub mod system;
 
 pub struct RaytraceApp {
     pub world: World,
