@@ -46,3 +46,12 @@ impl eframe::App for RaytraceApp {
         });
     }
 }
+
+/*
+ORDER OF OPERATIONS (many, MANY mini steps inbetween):
+
+1. Get renderer working, configure, meshes, materials, bind groups, etc to display a lighted environment model from a blender file.
+2. Render audio rays, for debug purposes, display bouncing, speed, collsisions, reflection rays, transmitted rays and etc.
+3. Hook onto audio and map ray collsisons and %ray coverage to the audio output.
+
+*/
