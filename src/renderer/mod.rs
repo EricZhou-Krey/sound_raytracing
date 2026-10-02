@@ -1,5 +1,7 @@
-mod model;
-mod reference;
+pub mod callback;
+pub mod extraction;
+pub mod pipeline;
+pub mod resource;
 
 pub struct Renderer;
 impl Renderer {

@@ -1,3 +1,10 @@
+pub mod acoustic_extraction;
+pub mod audio_mix;
+pub mod command_system;
+pub mod render_extraction;
+pub mod sound_raytrace;
+pub mod transform_system;
+
 pub fn sound_ray_collision_check() {}
 pub fn sound_ray_step() {}
 pub fn sound_ray_collision_resolution() {}
