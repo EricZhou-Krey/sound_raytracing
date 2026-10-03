@@ -71,7 +71,32 @@ pub struct GPUMesh {
     index_buffer: wgpu::Buffer,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MeshManager {
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
     pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
+}
+
+struct GPUMeshLoadError;
+
+impl MeshManager {
+    pub fn load_mesh_from_bytes(&mut self, bytes: &[u8]) -> Result<GPUMeshKey, GPUMeshLoadError> {
+        todo!()
+    }
+
+    pub fn load_mesh(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<GPUMeshKey, GPUMeshLoadError> {
+        todo!()
+    }
+
+    pub fn get_mesh(&self, key: &GPUMeshKey) -> Option<GPUMesh> {
+        todo!()
+    }
+
+    pub fn remove_mesh(&mut self, key: &GPUMeshKey) -> Option<GPUMesh> {
+        todo!()
+    }
 }

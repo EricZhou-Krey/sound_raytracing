@@ -9,12 +9,43 @@ pub struct GPUTexture {
     bind_group: wgpu::BindGroup,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TextureManager {
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
     pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
 }
 
+struct GPUTextureLoadError;
+
+impl TextureManager {
+    pub fn load_texture_from_bytes(
+        &mut self,
+        bytes: &[u8],
+    ) -> Result<GPUTextureKey, GPUTextureLoadError> {
+        todo!()
+    }
+
+    pub fn load_texture(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<GPUTextureKey, GPUTextureLoadError> {
+        todo!()
+    }
+
+    pub fn get_texture(&self, key: &GPUTextureKey) -> Option<GPUTextureLoadError> {
+        todo!()
+    }
+
+    pub fn remove_texture(&mut self, key: &GPUTextureKey) -> Option<GPUTextureLoadError> {
+        todo!()
+    }
+}
+
 /*
+
+// Add texture formatting
+
 let image_bytes = include_bytes!("*.png");
 let image = image::load_from_memory(image_bytes).unwrap();
 let image_rgba = image.to_rgba8();

@@ -50,5 +50,5 @@ pub mod acoustic_geometry;
 pub mod acoustic_material;
 pub mod acoustic_receiver;
 pub mod acoustic_source;
-pub mod mesh;
+pub mod object;
 pub mod transform;
