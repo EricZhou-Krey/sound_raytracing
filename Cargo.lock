@@ -4189,6 +4189,7 @@ dependencies = [
  "image",
  "kira",
  "rook_terminal",
+ "slotmap",
  "wgpu",
 ]
 
