@@ -1,7 +1,5 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TextureHandle {
-    index: usize,
-    generation: u32,
+slotmap::new_key_type! {
+    struct GPUTextureKey;
 }
 
 #[derive(Debug, PartialEq)]
@@ -11,10 +9,9 @@ pub struct GPUTexture {
     bind_group: wgpu::BindGroup,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default)]
 pub struct TextureManager {
-    textures: Vec<Option<GPUTexture>>,
-    generations: Vec<u32>,
+    pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
 }
 
 /*

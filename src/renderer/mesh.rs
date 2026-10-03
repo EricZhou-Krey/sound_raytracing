@@ -61,21 +61,17 @@ impl InstanceRaw {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct MeshHandle {
-    index: usize,
-    generation: u32,
+slotmap::new_key_type! {
+    struct GPUMeshKey;
 }
 
 #[derive(Debug, PartialEq)]
 pub struct GPUMesh {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    index_count: u32,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default)]
 pub struct MeshManager {
-    textures: Vec<Option<GPUMesh>>,
-    generations: Vec<u32>,
+    pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
 }

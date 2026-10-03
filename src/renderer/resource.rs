@@ -1,7 +1,9 @@
+use crate::renderer::{mesh::MeshManager, texture::TextureManager};
+
 pub struct RenderResource {
     pub pipeline: wgpu::RenderPipeline,
-    pub texture_manager: 
-    pub mesh_manager: ...
+    pub texture_manager: TextureManager,
+    pub mesh_manager: MeshManager,
 }
 
 impl RenderResource {
