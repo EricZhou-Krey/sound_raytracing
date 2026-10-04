@@ -1,25 +1,10 @@
-/*
-pub struct Instance {
-    position: glam::Vec3,
-    rotation: glam::Quat,
-}
-
-impl Instance {
-    pub fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
-            model: glam::Mat4::from_rotation_translation(self.rotation, self.position)
-                .to_cols_array_2d(),
-        }
-    }
-}
-
 #[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
-pub struct InstanceRaw {
-    model: [[f32; 4]; 4],
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GPUTransform {
+    pub model: [[f32; 4]; 4],
 }
 
-impl InstanceRaw {
+impl GPUTransform {
     const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
         3 => Float32x4,
         4 => Float32x4,
@@ -35,4 +20,3 @@ impl InstanceRaw {
         }
     }
 }
-*/

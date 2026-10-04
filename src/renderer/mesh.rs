@@ -1,15 +1,14 @@
-use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
-pub struct Vertex {
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GPUVertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub uv: [f32; 2],
 }
 
-impl Vertex {
+impl GPUVertex {
     const ATTRIBUTES: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
         0 => Float32x3,
         1 => Float32x3,
@@ -44,7 +43,7 @@ pub struct MeshManager {
 }
 
 impl MeshManager {
-    pub fn init_mesh(&mut self, vertices: &[Vertex], indicies: &[u16]) -> GPUMeshKey {
+    pub fn init_mesh(&mut self, vertices: &[GPUVertex], indicies: &[u16]) -> GPUMeshKey {
         let vertex_buffer: wgpu::Buffer =
             self.device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
