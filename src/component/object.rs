@@ -1,4 +1,4 @@
-use crate::renderer::{mesh::GPUMeshKey, resource::GPUTransform, texture::GPUTextureKey};
+use crate::renderer::{mesh::GPUMeshKey, texture::GPUTextureKey};
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Mesh {
@@ -18,14 +18,13 @@ pub struct Transform {
 }
 
 impl Transform {
-    pub fn to_gpu_transform(&self) -> GPUTransform {
-        GPUTransform {
-            model: glam::Mat4::from_scale_rotation_translation(
-                self.scale,
-                self.rotation,
-                self.translation,
-            )
-            .to_cols_array_2d(),
-        }
+    pub fn to_raw(&self) -> [[f32; 4]; 4] {
+        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+            .to_cols_array_2d()
+    }
+    pub fn to_inverse_raw(&self) -> [[f32; 4]; 4] {
+        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+            .inverse()
+            .to_cols_array_2d()
     }
 }

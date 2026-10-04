@@ -30,47 +30,52 @@ slotmap::new_key_type! {
 
 #[derive(Debug, PartialEq)]
 pub struct GPUMesh {
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    num_indicies: u32,
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+    pub num_indices: u32,
 }
 
 #[derive(Debug)]
 pub struct MeshManager {
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
     pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
 }
 
+impl Default for MeshManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MeshManager {
-    pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
+    pub fn new() -> Self {
         Self {
-            device,
-            queue,
             meshes: slotmap::SlotMap::with_key(),
         }
     }
-    pub fn init_mesh(&mut self, vertices: &[GPUVertex], indicies: &[u16]) -> GPUMeshKey {
+    pub fn init_mesh(
+        &mut self,
+        device: &wgpu::Device,
+        vertices: &[GPUVertex],
+        indices: &[u16],
+    ) -> GPUMeshKey {
         let vertex_buffer: wgpu::Buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(vertices),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
         let index_buffer: wgpu::Buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(indicies),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
 
         self.meshes.insert(GPUMesh {
             vertex_buffer,
             index_buffer,
-            num_indicies: indicies.len() as u32,
+            num_indices: indices.len() as u32,
         })
     }
 }

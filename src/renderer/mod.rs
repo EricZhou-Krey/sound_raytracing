@@ -1,6 +1,7 @@
 use crate::renderer::callback::RenderCallback;
 
 pub mod callback;
+pub mod instance;
 pub mod mesh;
 pub mod resource;
 pub mod texture;

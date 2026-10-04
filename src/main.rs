@@ -1,11 +1,13 @@
 use eframe::{CreationContext, NativeOptions};
-use sound_raytracing::RaytraceApp;
+use sound_raytracing::app::RaytraceApp;
 
 fn main() -> eframe::Result {
     env_logger::init();
 
     let native_options: NativeOptions = NativeOptions {
         viewport: egui::ViewportBuilder::default().with_maximized(true),
+        renderer: eframe::Renderer::Wgpu,
+        depth_buffer: 32,
         ..Default::default()
     };
 

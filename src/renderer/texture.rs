@@ -6,66 +6,33 @@ slotmap::new_key_type! {
 
 #[derive(Debug, PartialEq)]
 pub struct GPUTexture {
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    bind_group: wgpu::BindGroup,
+    pub texture: wgpu::Texture,
+    pub view: wgpu::TextureView,
+    pub bind_group: wgpu::BindGroup,
 }
 
 #[derive(Debug)]
 pub struct TextureManager {
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub sampler: wgpu::Sampler,
     pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
 }
 
 impl TextureManager {
-    pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
-        let bind_group_layout: wgpu::BindGroupLayout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Texture Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let sampler: wgpu::Sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
-
+    pub fn new(bind_group_layout: wgpu::BindGroupLayout, sampler: wgpu::Sampler) -> Self {
         Self {
-            device,
-            queue,
             bind_group_layout,
             sampler,
             textures: slotmap::SlotMap::with_key(),
         }
     }
 
-    pub fn init_texture(&mut self, bytes: &[u8]) -> anyhow::Result<GPUTextureKey> {
+    pub fn init_texture(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        bytes: &[u8],
+    ) -> anyhow::Result<GPUTextureKey> {
         let image: image::DynamicImage = image::load_from_memory(bytes)?;
         let image_rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image.to_rgba8();
 
@@ -78,8 +45,8 @@ impl TextureManager {
             depth_or_array_layers: 1,
         };
 
-        let texture: wgpu::Texture = self.device.create_texture_with_data(
-            &self.queue,
+        let texture: wgpu::Texture = device.create_texture_with_data(
+            queue,
             &wgpu::TextureDescriptor {
                 label: Some("Texture"),
                 size: texture_size,
@@ -96,21 +63,20 @@ impl TextureManager {
 
         let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let bind_group: wgpu::BindGroup =
-            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Texture Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                ],
-            });
+        let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Texture Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
 
         Ok(self.textures.insert(GPUTexture {
             texture,
