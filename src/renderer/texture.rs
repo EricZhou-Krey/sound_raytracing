@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 
 slotmap::new_key_type! {
-    struct GPUTextureKey;
+    pub struct GPUTextureKey;
 }
 
 #[derive(Debug, PartialEq)]

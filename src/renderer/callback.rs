@@ -1,65 +1,51 @@
-use crate::renderer::{
-    mesh::{GPUVertex, MeshManager},
-    resource::RenderResource,
-    texture::TextureManager,
-};
+use crate::renderer::{mesh::GPUMeshKey, resource::GPUTransform, texture::GPUTextureKey};
 
-pub fn init_callback_resources(cc: &eframe::CreationContext) {
-    let wgpu_state: &eframe::egui_wgpu::RenderState =
-        cc.wgpu_render_state.as_ref().expect("wgpu not enabled");
-    let device: &wgpu::Device = &wgpu_state.device;
-    let queue: &wgpu::Queue = &wgpu_state.queue;
+#[derive(Debug, Clone, PartialEq)]
+pub struct GPUObject {
+    mesh: GPUMeshKey,
+    texture: GPUTextureKey,
+    transform: GPUTransform,
+}
 
-    let shader: wgpu::ShaderModule = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("Shader"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("shader/shader.wgsl").into()),
-    });
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct RenderCallback {
+    pub objects: Vec<GPUObject>,
+}
 
-    let pipeline_layout: wgpu::PipelineLayout =
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[],
-            immediate_size: 0,
-        });
+impl RenderCallback {
+    pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
+        todo!()
+    }
+}
 
-    let pipeline: wgpu::RenderPipeline =
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Room Render Pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[Some(GPUVertex::layout())],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu_state.target_format.into())],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
+impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
+    fn prepare(
+        &self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _screen_descriptor: &eframe::egui_wgpu::ScreenDescriptor,
+        _egui_encoder: &mut wgpu::CommandEncoder,
+        _callback_resources: &mut eframe::egui_wgpu::CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        todo!()
+    }
 
-    wgpu_state
-        .renderer
-        .write()
-        .callback_resources
-        .insert(RenderResource {
-            pipeline,
-            texture_manager: TextureManager {
-                device: device.clone(),
-                queue: queue.clone(),
-                textures: slotmap::SlotMap::with_key(),
-            },
-            mesh_manager: MeshManager {
-                device: device.clone(),
-                queue: queue.clone(),
-                meshes: slotmap::SlotMap::with_key(),
-            },
-        });
+    fn finish_prepare(
+        &self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _egui_encoder: &mut wgpu::CommandEncoder,
+        _callback_resources: &mut eframe::egui_wgpu::CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        todo!()
+    }
+
+    fn paint(
+        &self,
+        info: egui::PaintCallbackInfo,
+        render_pass: &mut wgpu::RenderPass<'static>,
+        callback_resources: &eframe::egui_wgpu::CallbackResources,
+    ) {
+        todo!()
+    }
 }

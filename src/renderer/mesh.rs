@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUVertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
@@ -25,7 +25,7 @@ impl GPUVertex {
 }
 
 slotmap::new_key_type! {
-    struct GPUMeshKey;
+    pub struct GPUMeshKey;
 }
 
 #[derive(Debug, PartialEq)]
