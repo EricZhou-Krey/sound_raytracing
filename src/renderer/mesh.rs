@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -24,43 +25,6 @@ impl Vertex {
     }
 }
 
-pub struct Instance {
-    position: glam::Vec3,
-    rotation: glam::Quat,
-}
-
-impl Instance {
-    pub fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
-            model: glam::Mat4::from_rotation_translation(self.rotation, self.position)
-                .to_cols_array_2d(),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
-pub struct InstanceRaw {
-    model: [[f32; 4]; 4],
-}
-
-impl InstanceRaw {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
-        3 => Float32x4,
-        4 => Float32x4,
-        5 => Float32x4,
-        5 => Float32x4,
-    ];
-
-    pub fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &Self::ATTRIBUTES,
-        }
-    }
-}
-
 slotmap::new_key_type! {
     struct GPUMeshKey;
 }
@@ -69,6 +33,7 @@ slotmap::new_key_type! {
 pub struct GPUMesh {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    num_indicies: u32,
 }
 
 #[derive(Debug)]
@@ -78,25 +43,28 @@ pub struct MeshManager {
     pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
 }
 
-struct GPUMeshLoadError;
-
 impl MeshManager {
-    pub fn load_mesh_from_bytes(&mut self, bytes: &[u8]) -> Result<GPUMeshKey, GPUMeshLoadError> {
-        todo!()
-    }
+    pub fn init_mesh(&mut self, vertices: &[Vertex], indicies: &[u16]) -> GPUMeshKey {
+        let vertex_buffer: wgpu::Buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: bytemuck::cast_slice(vertices),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
 
-    pub fn load_mesh(
-        &mut self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<GPUMeshKey, GPUMeshLoadError> {
-        todo!()
-    }
+        let index_buffer: wgpu::Buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index Buffer"),
+                    contents: bytemuck::cast_slice(indicies),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
 
-    pub fn get_mesh(&self, key: &GPUMeshKey) -> Option<GPUMesh> {
-        todo!()
-    }
-
-    pub fn remove_mesh(&mut self, key: &GPUMeshKey) -> Option<GPUMesh> {
-        todo!()
+        self.meshes.insert(GPUMesh {
+            vertex_buffer,
+            index_buffer,
+            num_indicies: indicies.len() as u32,
+        })
     }
 }

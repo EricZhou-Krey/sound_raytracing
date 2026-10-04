@@ -1,8 +1,6 @@
 pub mod callback;
 pub mod extraction;
 pub mod mesh;
-pub mod object;
-pub mod pipeline;
 pub mod resource;
 pub mod texture;
 

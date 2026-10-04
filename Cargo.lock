@@ -4180,6 +4180,7 @@ dependencies = [
 name = "sound_raytracing"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy_ecs",
  "bytemuck",
  "eframe",
