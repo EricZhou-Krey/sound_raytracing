@@ -43,6 +43,13 @@ pub struct MeshManager {
 }
 
 impl MeshManager {
+    pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
+        Self {
+            device,
+            queue,
+            meshes: slotmap::SlotMap::with_key(),
+        }
+    }
     pub fn init_mesh(&mut self, vertices: &[GPUVertex], indicies: &[u16]) -> GPUMeshKey {
         let vertex_buffer: wgpu::Buffer =
             self.device

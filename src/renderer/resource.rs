@@ -1,5 +1,3 @@
-use bevy_ecs::world;
-
 use crate::{
     component::object::{Mesh, Texture, Transform},
     renderer::{
@@ -7,6 +5,13 @@ use crate::{
         texture::TextureManager,
     },
 };
+
+#[repr(C)]
+#[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GPUCamera {
+    pub view: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
+}
 
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -102,15 +107,7 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
         .callback_resources
         .insert(RenderResource {
             pipeline,
-            texture_manager: TextureManager {
-                device: device.clone(),
-                queue: queue.clone(),
-                textures: slotmap::SlotMap::with_key(),
-            },
-            mesh_manager: MeshManager {
-                device: device.clone(),
-                queue: queue.clone(),
-                meshes: slotmap::SlotMap::with_key(),
-            },
+            texture_manager: TextureManager::new(device.clone(), queue.clone()),
+            mesh_manager: MeshManager::new(device.clone(), queue.clone()),
         });
 }

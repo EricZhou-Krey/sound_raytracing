@@ -1,7 +1,13 @@
-use crate::renderer::{
-    mesh::GPUMeshKey,
-    resource::{GPUTransform, RenderCallbackObjectQueryState},
-    texture::GPUTextureKey,
+use crate::{
+    component::{
+        camera::{ActiveCamera, CameraProjection},
+        object::Transform,
+    },
+    renderer::{
+        mesh::GPUMeshKey,
+        resource::{GPUCamera, GPUTransform, RenderCallbackObjectQueryState, RenderResource},
+        texture::GPUTextureKey,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -13,6 +19,7 @@ pub struct GPUObject {
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct RenderCallback {
+    pub camera: GPUCamera,
     pub objects: Vec<GPUObject>,
 }
 
@@ -23,7 +30,7 @@ impl RenderCallback {
              mut query_resource: bevy_ecs::change_detection::Mut<
                 RenderCallbackObjectQueryState,
             >| {
-                let objects = query_resource
+                let objects: Vec<GPUObject> = query_resource
                     .query_state
                     .iter_mut(world)
                     .map(|(transform, mesh, texture)| GPUObject {
@@ -33,40 +40,39 @@ impl RenderCallback {
                     })
                     .collect();
 
-                RenderCallback { objects }
+                let active_camera: bevy_ecs::entity::Entity =
+                    world.resource::<ActiveCamera>().camera;
+                let camera_transform: &Transform = world.get::<Transform>(active_camera).unwrap();
+                let projection: &CameraProjection = world.resource::<CameraProjection>();
+                let camera: GPUCamera = GPUCamera {
+                    view: glam::Mat4::from_rotation_translation(
+                        camera_transform.rotation,
+                        camera_transform.translation,
+                    )
+                    .to_cols_array_2d(),
+                    proj: glam::camera::rh::proj::vulkan::perspective(
+                        projection.vertical_fov,
+                        projection.aspect_ratio,
+                        projection.z_near,
+                        projection.z_far,
+                    )
+                    .to_cols_array_2d(),
+                };
+
+                RenderCallback { camera, objects }
             },
         )
     }
 }
 
 impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
-    fn prepare(
-        &self,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _screen_descriptor: &eframe::egui_wgpu::ScreenDescriptor,
-        _egui_encoder: &mut wgpu::CommandEncoder,
-        _callback_resources: &mut eframe::egui_wgpu::CallbackResources,
-    ) -> Vec<wgpu::CommandBuffer> {
-        todo!()
-    }
-
-    fn finish_prepare(
-        &self,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _egui_encoder: &mut wgpu::CommandEncoder,
-        _callback_resources: &mut eframe::egui_wgpu::CallbackResources,
-    ) -> Vec<wgpu::CommandBuffer> {
-        todo!()
-    }
-
     fn paint(
         &self,
         _info: egui::PaintCallbackInfo,
-        _render_pass: &mut wgpu::RenderPass<'static>,
-        _callback_resources: &eframe::egui_wgpu::CallbackResources,
+        render_pass: &mut wgpu::RenderPass<'static>,
+        callback_resources: &eframe::egui_wgpu::CallbackResources,
     ) {
-        todo!()
+        let resources: &RenderResource = callback_resources.get().unwrap();
+        render_pass.set_pipeline(&resources.pipeline);
     }
 }
