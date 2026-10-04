@@ -1,6 +1,11 @@
-use crate::renderer::{
-    mesh::{GPUVertex, MeshManager},
-    texture::TextureManager,
+use bevy_ecs::world;
+
+use crate::{
+    component::object::{Mesh, Texture, Transform},
+    renderer::{
+        mesh::{GPUVertex, MeshManager},
+        texture::TextureManager,
+    },
 };
 
 #[repr(C)]
@@ -26,13 +31,31 @@ impl GPUTransform {
     }
 }
 
+#[derive(Debug)]
 pub struct RenderResource {
     pub pipeline: wgpu::RenderPipeline,
     pub texture_manager: TextureManager,
     pub mesh_manager: MeshManager,
 }
 
-pub fn init_callback_resources(cc: &eframe::CreationContext) {
+#[derive(Debug, bevy_ecs::resource::Resource)]
+pub struct RenderCallbackObjectQueryState {
+    pub query_state:
+        bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Texture)>,
+}
+
+impl RenderCallbackObjectQueryState {
+    pub fn new(world: &mut bevy_ecs::world::World) -> Self {
+        Self {
+            query_state: world.query::<(&Transform, &Mesh, &Texture)>(),
+        }
+    }
+}
+
+pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ecs::world::World) {
+    let object_query: RenderCallbackObjectQueryState = RenderCallbackObjectQueryState::new(world);
+    world.insert_resource(object_query);
+
     let wgpu_state: &eframe::egui_wgpu::RenderState =
         cc.wgpu_render_state.as_ref().expect("wgpu not enabled");
     let device: &wgpu::Device = &wgpu_state.device;

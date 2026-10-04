@@ -1,4 +1,8 @@
-use crate::renderer::{mesh::GPUMeshKey, resource::GPUTransform, texture::GPUTextureKey};
+use crate::renderer::{
+    mesh::GPUMeshKey,
+    resource::{GPUTransform, RenderCallbackObjectQueryState},
+    texture::GPUTextureKey,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GPUObject {
@@ -14,7 +18,24 @@ pub struct RenderCallback {
 
 impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
-        todo!()
+        world.resource_scope(
+            |world,
+             mut query_resource: bevy_ecs::change_detection::Mut<
+                RenderCallbackObjectQueryState,
+            >| {
+                let objects = query_resource
+                    .query_state
+                    .iter_mut(world)
+                    .map(|(transform, mesh, texture)| GPUObject {
+                        transform: transform.to_gpu_transform(),
+                        mesh: mesh.key,
+                        texture: texture.key,
+                    })
+                    .collect();
+
+                RenderCallback { objects }
+            },
+        )
     }
 }
 
@@ -42,9 +63,9 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
 
     fn paint(
         &self,
-        info: egui::PaintCallbackInfo,
-        render_pass: &mut wgpu::RenderPass<'static>,
-        callback_resources: &eframe::egui_wgpu::CallbackResources,
+        _info: egui::PaintCallbackInfo,
+        _render_pass: &mut wgpu::RenderPass<'static>,
+        _callback_resources: &eframe::egui_wgpu::CallbackResources,
     ) {
         todo!()
     }

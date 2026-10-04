@@ -2,19 +2,19 @@ use crate::renderer::{mesh::GPUMeshKey, resource::GPUTransform, texture::GPUText
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Mesh {
-    texture: GPUMeshKey,
+    pub key: GPUMeshKey,
 }
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Texture {
-    texture: GPUTextureKey,
+    pub key: GPUTextureKey,
 }
 
 #[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
 pub struct Transform {
-    scale: glam::Vec3,
-    translation: glam::Vec3,
-    rotation: glam::Quat,
+    pub scale: glam::Vec3,
+    pub translation: glam::Vec3,
+    pub rotation: glam::Quat,
 }
 
 impl Transform {

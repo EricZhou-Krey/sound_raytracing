@@ -1,4 +1,4 @@
-use crate::renderer::{callback::init_callback_resources, Renderer};
+use crate::renderer::resource::init_callback_resources;
 use bevy_ecs::world::{Mut, World};
 use eframe::CreationContext;
 use rook_terminal::{command::HelpCommand, Terminal, TerminalCommandEvent, TerminalWorldExtension};
@@ -17,7 +17,7 @@ impl RaytraceApp {
         });
         world.flush();
 
-        init_callback_resources(cc);
+        init_callback_resources(cc, &mut world);
 
         Self { world }
     }
