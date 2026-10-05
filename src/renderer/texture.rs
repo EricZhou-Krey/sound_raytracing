@@ -8,20 +8,17 @@ slotmap::new_key_type! {
 pub struct GPUTexture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
-    pub bind_group: wgpu::BindGroup,
 }
 
 #[derive(Debug)]
 pub struct TextureManager {
-    pub bind_group_layout: wgpu::BindGroupLayout,
     pub sampler: wgpu::Sampler,
     pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
 }
 
 impl TextureManager {
-    pub fn new(bind_group_layout: wgpu::BindGroupLayout, sampler: wgpu::Sampler) -> Self {
+    pub fn new(sampler: wgpu::Sampler) -> Self {
         Self {
-            bind_group_layout,
             sampler,
             textures: slotmap::SlotMap::with_key(),
         }
@@ -35,7 +32,6 @@ impl TextureManager {
     ) -> anyhow::Result<GPUTextureKey> {
         let image: image::DynamicImage = image::load_from_memory(bytes)?;
         let image_rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image.to_rgba8();
-
         use image::GenericImageView;
         let dimensions = image.dimensions();
 
@@ -63,25 +59,6 @@ impl TextureManager {
 
         let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Texture Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-            ],
-        });
-
-        Ok(self.textures.insert(GPUTexture {
-            texture,
-            view,
-            bind_group,
-        }))
+        Ok(self.textures.insert(GPUTexture { texture, view }))
     }
 }

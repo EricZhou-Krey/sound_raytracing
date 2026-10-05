@@ -1,11 +1,15 @@
 use crate::{
-    asset::manager::{MeshAsset, MeshManager, TextureAsset, TextureManager},
+    asset::manager::{MaterialAsset, MaterialManager, MeshAsset, MeshManager},
     component::{
         camera::{ActiveCamera, CameraProjection},
         object::Transform,
     },
-    renderer::resource::{
-        GPUCamera, GPUObject, GPUTransform, RenderCallbackObjectQueryState, RenderResource,
+    renderer::{
+        material::GPUMaterial,
+        mesh::GPUMesh,
+        resource::{
+            GPUCamera, GPUObject, GPUTransform, RenderCallbackObjectQueryState, RenderResource,
+        },
     },
 };
 
@@ -26,22 +30,22 @@ impl RenderCallback {
                     RenderCallbackObjectQueryState,
                 >| {
                     let mesh_manager: &MeshManager = world.resource::<MeshManager>();
-                    let texture_manager: &TextureManager = world.resource::<TextureManager>();
+                    let material_manager: &MaterialManager = world.resource::<MaterialManager>();
 
                     query_state
                         .query_state
                         .iter(world)
-                        .filter_map(|(transform, mesh, texture)| {
+                        .filter_map(|(transform, mesh, material)| {
                             let mesh_asset: &MeshAsset = mesh_manager.meshes.get(mesh.id)?;
-                            let texture_asset: &TextureAsset =
-                                texture_manager.textures.get(texture.id)?;
+                            let material_asset: &MaterialAsset =
+                                material_manager.materials.get(material.id)?;
 
                             Some(GPUObject {
                                 transform: GPUTransform {
                                     model: transform.to_raw(),
                                 },
                                 mesh: mesh_asset.gpu_key,
-                                texture: texture_asset.gpu_key,
+                                material: material_asset.gpu_key?,
                             })
                         })
                         .collect()
@@ -95,20 +99,24 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
     fn paint(
         &self,
         _info: egui::PaintCallbackInfo,
-        render_pass: &mut wgpu::RenderPass<'static>,
+        render_pass: &mut wgpu::RenderPass,
         callback_resources: &eframe::egui_wgpu::CallbackResources,
     ) {
-        let render_resource: &RenderResource =
-            callback_resources.get().expect("RenderResource missing");
-
+        let render_resource: &RenderResource = callback_resources.get().unwrap();
         render_pass.set_pipeline(&render_resource.pipeline);
         render_pass.set_bind_group(0, &render_resource.camera_bind_group, &[]);
 
         for batch in &render_resource.instance_manager.instance_batches {
-            let mesh = &render_resource.mesh_manager.meshes[batch.mesh];
-            let texture = &render_resource.texture_manager.textures[batch.texture];
+            let mesh: &GPUMesh = render_resource.mesh_manager.meshes.get(batch.mesh).unwrap();
 
-            render_pass.set_bind_group(1, &texture.bind_group, &[]);
+            let material: &GPUMaterial = render_resource
+                .material_manager
+                .materials
+                .get(batch.material)
+                .unwrap();
+
+            render_pass.set_bind_group(1, &material.bind_group, &[]);
+
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, batch.instance_buffer.slice(..));
             render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);

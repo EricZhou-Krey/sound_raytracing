@@ -1,4 +1,4 @@
-use crate::renderer::{mesh::GPUMeshKey, texture::GPUTextureKey};
+use crate::renderer::{material::GPUMaterialKey, mesh::GPUMeshKey, texture::GPUTextureKey};
 
 slotmap::new_key_type! {
     pub struct MeshId;
@@ -19,8 +19,19 @@ pub struct TextureAsset {
     pub gpu_key: GPUTextureKey,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct MaterialAsset {}
+#[derive(Debug, PartialEq, Clone)]
+pub struct MaterialAsset {
+    pub base_color: [f32; 4],
+    pub metallic: f32,
+    pub roughness: f32,
+
+    pub base_color_texture: Option<TextureId>,
+    pub normal_texture: Option<TextureId>,
+    pub metallic_roughness_texture: Option<TextureId>,
+    pub occlusion_texture: Option<TextureId>,
+
+    pub gpu_key: Option<GPUMaterialKey>,
+}
 
 #[derive(Debug, Default, bevy_ecs::resource::Resource)]
 pub struct MeshManager {
@@ -34,5 +45,5 @@ pub struct TextureManager {
 
 #[derive(Debug, Default, bevy_ecs::resource::Resource)]
 pub struct MaterialManager {
-    pub material: slotmap::SlotMap<MaterialId, MaterialAsset>,
+    pub materials: slotmap::SlotMap<MaterialId, MaterialAsset>,
 }

@@ -1,9 +1,10 @@
 use crate::{
-    component::object::{Mesh, Texture, Transform},
+    component::object::{Material, Mesh, Transform},
     renderer::{
         instance::InstanceManager,
+        material::{GPUMaterialKey, MaterialManager},
         mesh::{GPUMeshKey, GPUVertex, MeshManager},
-        texture::{GPUTextureKey, TextureManager},
+        texture::TextureManager,
     },
 };
 
@@ -40,7 +41,7 @@ impl GPUTransform {
 #[derive(Debug, Clone, PartialEq)]
 pub struct GPUObject {
     pub mesh: GPUMeshKey,
-    pub texture: GPUTextureKey,
+    pub material: GPUMaterialKey,
     pub transform: GPUTransform,
 }
 
@@ -48,6 +49,7 @@ pub struct GPUObject {
 pub struct RenderResource {
     pub pipeline: wgpu::RenderPipeline,
     pub texture_manager: TextureManager,
+    pub material_manager: MaterialManager,
     pub mesh_manager: MeshManager,
     pub instance_manager: InstanceManager,
 
@@ -58,13 +60,13 @@ pub struct RenderResource {
 #[derive(Debug, bevy_ecs::resource::Resource)]
 pub struct RenderCallbackObjectQueryState {
     pub query_state:
-        bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Texture)>,
+        bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
 }
 
 impl RenderCallbackObjectQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {
-            query_state: world.query::<(&Transform, &Mesh, &Texture)>(),
+            query_state: world.query::<(&Transform, &Mesh, &Material)>(),
         }
     }
 }
@@ -82,14 +84,14 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
         source: wgpu::ShaderSource::Wgsl(include_str!("shader/shader.wgsl").into()),
     });
 
-    let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    let camera_buffer: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Camera Buffer"),
         size: std::mem::size_of::<GPUCamera>() as u64,
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
-    let camera_bind_group_layout =
+    let camera_bind_group_layout: wgpu::BindGroupLayout =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Camera Bind Group Layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -104,7 +106,7 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
             }],
         });
 
-    let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    let camera_bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Camera Bind Group"),
         layout: &camera_bind_group_layout,
         entries: &[wgpu::BindGroupEntry {
@@ -113,12 +115,22 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
         }],
     });
 
-    let texture_bind_group_layout: wgpu::BindGroupLayout =
+    let material_bind_group_layout =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Texture Bind Group Layout"),
+            label: Some("Material Bind Group Layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
@@ -128,7 +140,37 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
-                    binding: 1,
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
@@ -151,7 +193,7 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
             label: None,
             bind_group_layouts: &[
                 Some(&camera_bind_group_layout),
-                Some(&texture_bind_group_layout),
+                Some(&material_bind_group_layout),
             ],
             immediate_size: 0,
         });
@@ -191,7 +233,8 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
         .callback_resources
         .insert(RenderResource {
             pipeline,
-            texture_manager: TextureManager::new(texture_bind_group_layout, sampler),
+            texture_manager: TextureManager::new(sampler),
+            material_manager: MaterialManager::new(material_bind_group_layout),
             mesh_manager: MeshManager::new(),
             instance_manager: InstanceManager::new(),
 

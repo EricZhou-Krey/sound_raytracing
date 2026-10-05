@@ -1,5 +1,5 @@
 use crate::{
-    asset::manager::{MeshManager, TextureManager},
+    asset::manager::{MaterialManager, MeshManager, TextureManager},
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
         object::Transform,
@@ -50,6 +50,7 @@ impl RaytraceApp {
         });
         world.insert_resource(MeshManager::default());
         world.insert_resource(TextureManager::default());
+        world.insert_resource(MaterialManager::default());
         world.insert_resource(TerminalDebugSettings::default());
 
         Self { world }

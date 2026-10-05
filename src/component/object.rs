@@ -1,4 +1,4 @@
-use crate::asset::manager::{MeshId, TextureId};
+use crate::asset::manager::{MaterialId, MeshId, TextureId};
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Mesh {
@@ -8,6 +8,11 @@ pub struct Mesh {
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Texture {
     pub id: TextureId,
+}
+
+#[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
+pub struct Material {
+    pub id: MaterialId,
 }
 
 #[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
