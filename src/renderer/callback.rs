@@ -1,4 +1,5 @@
 use crate::{
+    asset::manager::{MeshAsset, MeshManager, TextureAsset, TextureManager},
     component::{
         camera::{ActiveCamera, CameraProjection},
         object::Transform,
@@ -16,35 +17,53 @@ pub struct RenderCallback {
 
 impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
-        world.resource_scope(
-            |world,
-             mut query_resource: bevy_ecs::change_detection::Mut<
-                RenderCallbackObjectQueryState,
-            >| {
-                let objects: Vec<GPUObject> = query_resource
-                    .query_state
-                    .iter_mut(world)
-                    .map(|(transform, mesh, texture)| GPUObject {
-                        transform: GPUTransform {
-                            model: transform.to_raw(),
-                        },
-                        mesh: mesh.key,
-                        texture: texture.key,
-                    })
-                    .collect();
+        let camera: GPUCamera = Self::extract_camera(world);
 
-                let active_camera: bevy_ecs::entity::Entity =
-                    world.resource::<ActiveCamera>().camera;
-                let camera_transform: &Transform = world.get::<Transform>(active_camera).unwrap();
-                let projection: &CameraProjection = world.resource::<CameraProjection>();
-                let camera: GPUCamera = GPUCamera {
-                    view: camera_transform.to_inverse_raw(),
-                    proj: projection.to_raw(),
-                };
+        let objects: Vec<GPUObject> =
+            world.resource_scope(
+                |world,
+                 mut query_state: bevy_ecs::change_detection::Mut<
+                    RenderCallbackObjectQueryState,
+                >| {
+                    let mesh_manager: &MeshManager = world.resource::<MeshManager>();
+                    let texture_manager: &TextureManager = world.resource::<TextureManager>();
 
-                RenderCallback { camera, objects }
-            },
-        )
+                    query_state
+                        .query_state
+                        .iter(world)
+                        .filter_map(|(transform, mesh, texture)| {
+                            let mesh_asset: &MeshAsset = mesh_manager.meshes.get(mesh.id)?;
+                            let texture_asset: &TextureAsset =
+                                texture_manager.textures.get(texture.id)?;
+
+                            Some(GPUObject {
+                                transform: GPUTransform {
+                                    model: transform.to_raw(),
+                                },
+                                mesh: mesh_asset.gpu_key,
+                                texture: texture_asset.gpu_key,
+                            })
+                        })
+                        .collect()
+                },
+            );
+
+        Self { camera, objects }
+    }
+
+    fn extract_camera(world: &bevy_ecs::world::World) -> GPUCamera {
+        let active_camera: bevy_ecs::entity::Entity = world.resource::<ActiveCamera>().camera;
+
+        let camera_transform: &Transform = world
+            .get::<Transform>(active_camera)
+            .expect("Active camera entity does not have a Transform component");
+
+        let projection: &CameraProjection = world.resource::<CameraProjection>();
+
+        GPUCamera {
+            view: camera_transform.to_inverse_raw(),
+            proj: projection.to_raw(),
+        }
     }
 }
 

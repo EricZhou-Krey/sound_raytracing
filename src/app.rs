@@ -1,9 +1,11 @@
 use crate::{
+    asset::manager::{MeshManager, TextureManager},
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
         object::Transform,
     },
     renderer::{resource::init_callback_resources, Renderer},
+    resource::terminal_debug_settings::TerminalDebugSettings,
 };
 use bevy_ecs::{
     entity::Entity,
@@ -40,13 +42,15 @@ impl RaytraceApp {
             .id();
 
         world.insert_resource(ActiveCamera { camera });
-
         world.insert_resource(CameraProjection {
             vertical_fov: 60.0_f32.to_radians(),
             aspect_ratio: 16.0 / 9.0,
             z_near: 0.1,
             z_far: 1000.0,
         });
+        world.insert_resource(MeshManager::default());
+        world.insert_resource(TextureManager::default());
+        world.insert_resource(TerminalDebugSettings::default());
 
         Self { world }
     }

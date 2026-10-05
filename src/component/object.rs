@@ -1,13 +1,13 @@
-use crate::renderer::{mesh::GPUMeshKey, texture::GPUTextureKey};
+use crate::asset::manager::{MeshId, TextureId};
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Mesh {
-    pub key: GPUMeshKey,
+    pub id: MeshId,
 }
 
 #[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
 pub struct Texture {
-    pub key: GPUTextureKey,
+    pub id: TextureId,
 }
 
 #[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
