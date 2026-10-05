@@ -6,7 +6,6 @@ pub mod component;
 pub mod renderer;
 pub mod resource;
 pub mod system;
-pub mod ui;
 
 /*
 ORDER OF OPERATIONS (many, MANY mini steps inbetween):

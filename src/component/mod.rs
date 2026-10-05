@@ -3,16 +3,6 @@ use glam::Vec3;
 use kira::sound::static_sound::StaticSoundData;
 
 #[derive(Component)]
-pub struct Point {
-    pub position: Vec3,
-}
-#[derive(Component)]
-pub enum Shape {
-    // Circle { center: Vec3, radius: f32 },
-    AxisAlignedBoundingBox { min: Vec3, max: Vec3 },
-    // Plane { point: Vec3, normal: Vec3 },
-}
-#[derive(Component)]
 pub struct FacingDirection {
     pub direction: Vec3,
 }
