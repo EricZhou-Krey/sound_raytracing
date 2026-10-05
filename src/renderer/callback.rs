@@ -105,6 +105,7 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
         let render_resource: &RenderResource = callback_resources.get().unwrap();
         render_pass.set_pipeline(&render_resource.pipeline);
         render_pass.set_bind_group(0, &render_resource.camera_bind_group, &[]);
+        // Light bind group
 
         for batch in &render_resource.instance_manager.instance_batches {
             let mesh: &GPUMesh = render_resource.mesh_manager.meshes.get(batch.mesh).unwrap();

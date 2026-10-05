@@ -28,9 +28,8 @@ impl TextureManager {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        bytes: &[u8],
-    ) -> anyhow::Result<GPUTextureKey> {
-        let image: image::DynamicImage = image::load_from_memory(bytes)?;
+        image: image::DynamicImage,
+    ) -> GPUTextureKey {
         let image_rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image.to_rgba8();
         use image::GenericImageView;
         let dimensions = image.dimensions();
@@ -59,6 +58,6 @@ impl TextureManager {
 
         let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Ok(self.textures.insert(GPUTexture { texture, view }))
+        self.textures.insert(GPUTexture { texture, view })
     }
 }
