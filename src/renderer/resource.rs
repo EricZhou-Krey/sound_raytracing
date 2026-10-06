@@ -67,7 +67,6 @@ pub struct RenderResource {
     pub camera_bind_group: wgpu::BindGroup,
     // pub light_buffer: wgpu::Buffer,
     // pub light_bind_group: wgpu::BindGroup,
-    // Lights bind group and buffer
 }
 
 #[derive(Debug, bevy_ecs::resource::Resource)]
@@ -253,5 +252,7 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
 
             camera_buffer,
             camera_bind_group,
+            // light_buffer,
+            // light_bind_group,
         });
 }

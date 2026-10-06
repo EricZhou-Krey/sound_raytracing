@@ -15,12 +15,14 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum MeshSource {
     Path(String),
-    Description {},
+    Description {
+        vertices: Vec<[f32; 3]>,
+        indicies: Vec<usize>,
+    },
 }
 #[derive(Debug, Clone)]
 pub enum TextureSource {
     Path(String),
-    Description {},
 }
 
 #[derive(Debug, Clone)]
@@ -107,17 +109,41 @@ pub fn load_material(
     }
 }
 
+// TODO: research obj and object file formats to parse, or find a create that parses the differnet
+// types of resources for to describe an object or series of objects or scene, maybe a pub fn
+// request_load_scene could be used, also need to load lights in the same way
+
 fn load_mesh_asset(source: &MeshSource) -> Option<MeshAsset> {
-    todo!()
+    match source {
+        MeshSource::Path(_path) => todo!(),
+        MeshSource::Description { vertices, indicies } => {
+            todo!();
+        }
+    }
 }
 
 fn load_texture_asset(source: &TextureSource) -> Option<TextureAsset> {
-    todo!()
+    match source {
+        TextureSource::Path(_path) => todo!(),
+    }
 }
 
 fn load_material_asset(
     mut texture_manager: &mut ResMut<TextureManager>,
     source: &MaterialSource,
 ) -> Option<MaterialAsset> {
-    todo!()
+    match source {
+        MaterialSource::Path(_path) => todo!(),
+        MaterialSource::Description {
+            base_color,
+            metallic,
+            roughness,
+            base_color_texture,
+            normal_texture,
+            metallic_roughness_texture,
+            occlusion_texture,
+        } => {
+            todo!();
+        }
+    }
 }
