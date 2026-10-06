@@ -17,6 +17,16 @@ pub struct GPUCamera {
 
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GPULight {
+    pub position: [f32; 3],
+    pub radius: f32,
+
+    pub color: [f32; 3],
+    pub intensity: [f32; 3],
+}
+
+#[repr(C)]
+#[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUTransform {
     pub model: [[f32; 4]; 4],
 }
@@ -55,6 +65,9 @@ pub struct RenderResource {
 
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
+    // pub light_buffer: wgpu::Buffer,
+    // pub light_bind_group: wgpu::BindGroup,
+    // Lights bind group and buffer
 }
 
 #[derive(Debug, bevy_ecs::resource::Resource)]

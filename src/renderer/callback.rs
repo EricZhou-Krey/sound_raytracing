@@ -8,7 +8,8 @@ use crate::{
         material::GPUMaterial,
         mesh::GPUMesh,
         resource::{
-            GPUCamera, GPUObject, GPUTransform, RenderCallbackObjectQueryState, RenderResource,
+            GPUCamera, GPULight, GPUObject, GPUTransform, RenderCallbackObjectQueryState,
+            RenderResource,
         },
     },
 };
@@ -16,15 +17,25 @@ use crate::{
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct RenderCallback {
     pub camera: GPUCamera,
+    // pub lights: Vec<GPULight>,
     pub objects: Vec<GPUObject>,
 }
 
 impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
+        // let lights: Vec<GPULight> = Self::extract_lights(world);
+        let objects: Vec<GPUObject> = Self::extract_objects(world);
 
-        let objects: Vec<GPUObject> =
-            world.resource_scope(
+        Self {
+            camera,
+            // lights,
+            objects,
+        }
+    }
+
+    fn extract_objects(world: &mut bevy_ecs::world::World) -> Vec<GPUObject> {
+        world.resource_scope(
                 |world,
                  mut query_state: bevy_ecs::change_detection::Mut<
                     RenderCallbackObjectQueryState,
@@ -50,9 +61,11 @@ impl RenderCallback {
                         })
                         .collect()
                 },
-            );
+            )
+    }
 
-        Self { camera, objects }
+    fn extract_lights(world: &bevy_ecs::world::World) -> Vec<GPULight> {
+        todo!()
     }
 
     fn extract_camera(world: &bevy_ecs::world::World) -> GPUCamera {
@@ -83,6 +96,7 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
         let render_resource: &mut RenderResource = callback_resources
             .get_mut()
             .expect("RenderResource missing");
+
         queue.write_buffer(
             &render_resource.camera_buffer,
             0,
