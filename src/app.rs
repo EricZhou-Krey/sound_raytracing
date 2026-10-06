@@ -1,5 +1,8 @@
 use crate::{
-    asset::manager::{MaterialManager, MeshManager, TextureManager},
+    asset::{
+        loader::{load_material, load_mesh, request_init_object},
+        manager::{MaterialManager, MeshManager, TextureManager},
+    },
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
         object::Transform,
@@ -9,6 +12,7 @@ use crate::{
 };
 use bevy_ecs::{
     entity::Entity,
+    schedule::{IntoScheduleConfigs, Schedule},
     world::{Mut, World},
 };
 use eframe::CreationContext;
@@ -16,6 +20,7 @@ use rook_terminal::{command::HelpCommand, Terminal, TerminalCommandEvent, Termin
 
 pub struct RaytraceApp {
     pub world: World,
+    pub schedule: Schedule,
 }
 
 impl RaytraceApp {
@@ -53,7 +58,11 @@ impl RaytraceApp {
         world.insert_resource(MaterialManager::default());
         world.insert_resource(TerminalDebugSettings::default());
 
-        Self { world }
+        world.add_observer(request_init_object);
+        let mut schedule: Schedule = Schedule::default();
+        schedule.add_systems((load_mesh, load_material).chain());
+
+        Self { world, schedule }
     }
 }
 
@@ -69,8 +78,13 @@ impl eframe::App for RaytraceApp {
                 self.world.flush();
             }
         });
+
         egui::CentralPanel::default().show(ui, |ui: &mut egui::Ui| {
             Renderer::ui(ui, &mut self.world);
         });
+    }
+
+    fn logic(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.schedule.run(&mut self.world);
     }
 }
