@@ -1,8 +1,13 @@
-use crate::renderer::texture::{GPUTextureKey, TextureManager};
+use std::collections::HashMap;
+
+use crate::{
+    asset::manager::MaterialId,
+    renderer::texture::{GPUTextureKey, TextureManager},
+};
 use wgpu::util::DeviceExt;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct MaterialAsset {
+pub struct GPUMaterialAsset {
     pub base_color: [f32; 4],
     pub metallic: f32,
     pub roughness: f32,
@@ -38,6 +43,7 @@ pub struct DefaultTextures {
 pub struct MaterialManager {
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub materials: slotmap::SlotMap<GPUMaterialKey, GPUMaterial>,
+    pub id_key_mapping: HashMap<MaterialId, GPUMaterialKey>,
 }
 
 impl MaterialManager {
@@ -45,13 +51,14 @@ impl MaterialManager {
         Self {
             bind_group_layout,
             materials: slotmap::SlotMap::with_key(),
+            id_key_mapping: HashMap::new(),
         }
     }
 
     pub fn init_material(
         &mut self,
         device: &wgpu::Device,
-        material: &MaterialAsset,
+        material: &GPUMaterialAsset,
         texture_manager: &TextureManager,
         default_textures: &DefaultTextures,
     ) -> GPUMaterialKey {

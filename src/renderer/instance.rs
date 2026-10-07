@@ -1,4 +1,7 @@
-use crate::renderer::{material::GPUMaterialKey, mesh::GPUMeshKey, resource::GPUTransform};
+use crate::{
+    asset::manager::{MaterialId, MeshId},
+    renderer::{material::GPUMaterialKey, mesh::GPUMeshKey, resource::GPUTransform},
+};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
@@ -26,12 +29,17 @@ impl InstanceManager {
         &mut self,
         device: &wgpu::Device,
         objects: &[crate::renderer::resource::GPUObject],
+        mesh_mapping: &HashMap<MeshId, GPUMeshKey>,
+        material_mapping: &HashMap<MaterialId, GPUMaterialKey>,
     ) {
         let mut batches: HashMap<(GPUMeshKey, GPUMaterialKey), Vec<GPUTransform>> = HashMap::new();
 
         for object in objects {
             batches
-                .entry((object.mesh, object.material))
+                .entry((
+                    *mesh_mapping.get(&object.mesh).unwrap(),
+                    *material_mapping.get(&object.material).unwrap(),
+                ))
                 .or_default()
                 .push(object.transform);
         }

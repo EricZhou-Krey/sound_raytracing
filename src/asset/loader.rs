@@ -16,7 +16,7 @@ use crate::{
 pub enum MeshSource {
     Path(String),
     Description {
-        vertices: Vec<[f32; 3]>,
+        vertices: Vec<glam::Vec3>,
         indicies: Vec<usize>,
     },
 }
@@ -32,10 +32,6 @@ pub enum MaterialSource {
         base_color: [f32; 4],
         metallic: f32,
         roughness: f32,
-        base_color_texture: Option<TextureSource>,
-        normal_texture: Option<TextureSource>,
-        metallic_roughness_texture: Option<TextureSource>,
-        occlusion_texture: Option<TextureSource>,
     },
 }
 
@@ -47,6 +43,21 @@ pub struct PendingMesh {
 #[derive(Debug, Clone, Component)]
 pub struct PendingMaterial {
     pub source: MaterialSource,
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PendingGPUMesh {
+    pub id: MeshId,
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PendingGPUTexture {
+    pub id: TextureId,
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PendingGPUMaterial {
+    pub id: MaterialId,
 }
 
 #[derive(Debug, Event)]
@@ -74,7 +85,7 @@ pub fn load_mesh(
     query: Query<(Entity, &PendingMesh)>,
 ) {
     for (entity, pending) in query.iter() {
-        let Some(asset): Option<MeshAsset> = load_mesh_asset(&pending.source) else {
+        let Ok(asset): anyhow::Result<MeshAsset> = load_mesh_asset(&pending.source) else {
             continue;
         };
 
@@ -84,6 +95,8 @@ pub fn load_mesh(
             .entity(entity)
             .remove::<PendingMesh>()
             .insert(Mesh { id });
+
+        commands.spawn(PendingGPUMesh { id });
     }
 }
 
@@ -94,7 +107,7 @@ pub fn load_material(
     query: Query<(Entity, &PendingMaterial)>,
 ) {
     for (entity, pending) in query.iter() {
-        let Some(asset): Option<MaterialAsset> =
+        let Ok(asset): anyhow::Result<MaterialAsset> =
             load_material_asset(&mut texture_manager, &pending.source)
         else {
             continue;
@@ -106,44 +119,52 @@ pub fn load_material(
             .entity(entity)
             .remove::<PendingMaterial>()
             .insert(Material { id });
+
+        commands.spawn(PendingGPUMaterial { id });
+
+        // NEED to upload a request to init the mesh CPU side taken from the GPU prepare
     }
 }
 
 // TODO: research obj and object file formats to parse, or find a create that parses the differnet
 // types of resources for to describe an object or series of objects or scene, maybe a pub fn
 // request_load_scene could be used, also need to load lights in the same way
+// NEED access to callback resources
 
-fn load_mesh_asset(source: &MeshSource) -> Option<MeshAsset> {
+fn load_mesh_asset(source: &MeshSource) -> anyhow::Result<MeshAsset> {
     match source {
         MeshSource::Path(_path) => todo!(),
-        MeshSource::Description { vertices, indicies } => {
-            todo!();
-        }
+        MeshSource::Description { vertices, indicies } => Ok(MeshAsset {
+            vertices: vertices.clone(),
+            indices: indicies.clone(),
+        }),
     }
 }
 
-fn load_texture_asset(source: &TextureSource) -> Option<TextureAsset> {
+fn load_texture_asset(source: &TextureSource) -> anyhow::Result<TextureAsset> {
     match source {
         TextureSource::Path(_path) => todo!(),
     }
 }
 
 fn load_material_asset(
-    mut texture_manager: &mut ResMut<TextureManager>,
+    mut _texture_manager: &mut ResMut<TextureManager>,
     source: &MaterialSource,
-) -> Option<MaterialAsset> {
+) -> anyhow::Result<MaterialAsset> {
     match source {
         MaterialSource::Path(_path) => todo!(),
         MaterialSource::Description {
             base_color,
             metallic,
             roughness,
-            base_color_texture,
-            normal_texture,
-            metallic_roughness_texture,
-            occlusion_texture,
-        } => {
-            todo!();
-        }
+        } => Ok(MaterialAsset {
+            base_color: *base_color,
+            metallic: *metallic,
+            roughness: *roughness,
+            base_color_texture: None,
+            normal_texture: None,
+            metallic_roughness_texture: None,
+            occlusion_texture: None,
+        }),
     }
 }

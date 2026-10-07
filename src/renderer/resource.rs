@@ -1,9 +1,10 @@
 use crate::{
+    asset::manager::{MaterialId, MeshId},
     component::object::{Material, Mesh, Transform},
     renderer::{
         instance::InstanceManager,
-        material::{GPUMaterialKey, MaterialManager},
-        mesh::{GPUMeshKey, GPUVertex, MeshManager},
+        material::MaterialManager,
+        mesh::{GPUVertex, MeshManager},
         texture::TextureManager,
     },
 };
@@ -50,8 +51,8 @@ impl GPUTransform {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GPUObject {
-    pub mesh: GPUMeshKey,
-    pub material: GPUMaterialKey,
+    pub mesh: MeshId,
+    pub material: MaterialId,
     pub transform: GPUTransform,
 }
 

@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
 use wgpu::util::DeviceExt;
+
+use crate::asset::manager::TextureId;
 
 slotmap::new_key_type! {
     pub struct GPUTextureKey;
@@ -14,6 +18,7 @@ pub struct GPUTexture {
 pub struct TextureManager {
     pub sampler: wgpu::Sampler,
     pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
+    pub id_key_mapping: HashMap<TextureId, GPUTextureKey>,
 }
 
 impl TextureManager {
@@ -21,6 +26,7 @@ impl TextureManager {
         Self {
             sampler,
             textures: slotmap::SlotMap::with_key(),
+            id_key_mapping: HashMap::new(),
         }
     }
 

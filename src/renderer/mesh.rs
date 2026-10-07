@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
 use wgpu::util::DeviceExt;
+
+use crate::asset::manager::MeshId;
 
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -38,6 +42,7 @@ pub struct GPUMesh {
 #[derive(Debug)]
 pub struct MeshManager {
     pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
+    pub id_key_mapping: HashMap<MeshId, GPUMeshKey>,
 }
 
 impl Default for MeshManager {
@@ -50,6 +55,7 @@ impl MeshManager {
     pub fn new() -> Self {
         Self {
             meshes: slotmap::SlotMap::with_key(),
+            id_key_mapping: HashMap::new(),
         }
     }
     pub fn init_mesh(

@@ -1,5 +1,8 @@
 use crate::{
-    asset::manager::{MaterialAsset, MaterialManager, MeshAsset, MeshManager},
+    asset::manager::{
+        MaterialAsset, MaterialId, MaterialManager, MeshAsset, MeshId, MeshManager, TextureAsset,
+        TextureId,
+    },
     component::{
         camera::{ActiveCamera, CameraProjection},
         object::Transform,
@@ -15,17 +18,23 @@ use crate::{
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct RenderCallback {
+pub struct RenderCallback<'a> {
     pub camera: GPUCamera,
     // pub lights: Vec<GPULight>,
     pub objects: Vec<GPUObject>,
+    pub pending_meshes: Vec<(MeshId, &'a MeshAsset)>,
+    pub pending_textures: Vec<(TextureId, &'a TextureAsset)>,
+    pub pending_materials: Vec<(MaterialId, &'a MaterialAsset)>,
 }
 
-impl RenderCallback {
+impl<'a> RenderCallback<'a> {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
         let objects: Vec<GPUObject> = Self::extract_objects(world);
+
+        // Grab pending meshes, textures and materials, remove them from the world then create a
+        // GPU handle when inserting them
 
         Self {
             camera,
@@ -40,24 +49,17 @@ impl RenderCallback {
                  mut query_state: bevy_ecs::change_detection::Mut<
                     RenderCallbackObjectQueryState,
                 >| {
-                    let mesh_manager: &MeshManager = world.resource::<MeshManager>();
-                    let material_manager: &MaterialManager = world.resource::<MaterialManager>();
-
                     query_state
                         .query_state
                         .iter(world)
-                        .filter_map(|(transform, mesh, material)| {
-                            let mesh_asset: &MeshAsset = mesh_manager.meshes.get(mesh.id)?;
-                            let material_asset: &MaterialAsset =
-                                material_manager.materials.get(material.id)?;
-
-                            Some(GPUObject {
+                        .map(|(transform, mesh, material)| {
+                            GPUObject {
                                 transform: GPUTransform {
                                     model: transform.to_raw(),
                                 },
-                                mesh: mesh_asset.gpu_key,
-                                material: material_asset.gpu_key?,
-                            })
+                                mesh: mesh.id,
+                                material: material.id,
+                            }
                         })
                         .collect()
                 },
@@ -103,9 +105,12 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
             bytemuck::bytes_of(&self.camera),
         );
 
-        render_resource
-            .instance_manager
-            .update_batches(device, &self.objects);
+        render_resource.instance_manager.update_batches(
+            device,
+            &self.objects,
+            &render_resource.mesh_manager.id_key_mapping,
+            &render_resource.material_manager.id_key_mapping,
+        );
 
         Vec::new()
     }
