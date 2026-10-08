@@ -5,34 +5,20 @@ use bevy_ecs::{
 };
 
 use crate::{
-    asset::manager::{
-        MaterialAsset, MaterialId, MaterialManager, MeshAsset, MeshId, MeshManager, TextureAsset,
-        TextureId, TextureManager,
+    asset::{
+        id::{MaterialId, MeshId},
+        manager::{
+            MaterialAsset, MaterialManager, MeshAsset, MeshManager, TextureAsset, TextureManager,
+        },
+        source::{MaterialSource, MeshSource, TextureSource},
     },
     component::object::{Material, Mesh, Transform},
+    renderer::asset::GPUAssetBundle,
 };
 
-#[derive(Debug, Clone)]
-pub enum MeshSource {
-    Path(String),
-    Description {
-        vertices: Vec<glam::Vec3>,
-        indicies: Vec<usize>,
-    },
-}
-#[derive(Debug, Clone)]
-pub enum TextureSource {
-    Path(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum MaterialSource {
-    Path(String),
-    Description {
-        base_color: [f32; 4],
-        metallic: f32,
-        roughness: f32,
-    },
+#[derive(Debug, Component)]
+pub struct GPUAssetUpload {
+    pub asset_bundle: GPUAssetBundle,
 }
 
 #[derive(Debug, Clone, Component)]
@@ -43,21 +29,6 @@ pub struct PendingMesh {
 #[derive(Debug, Clone, Component)]
 pub struct PendingMaterial {
     pub source: MaterialSource,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct PendingGPUMesh {
-    pub id: MeshId,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct PendingGPUTexture {
-    pub id: TextureId,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct PendingGPUMaterial {
-    pub id: MaterialId,
 }
 
 #[derive(Debug, Event)]
@@ -89,14 +60,16 @@ pub fn load_mesh(
             continue;
         };
 
-        let id: MeshId = manager.meshes.insert(asset);
+        let id: MeshId = manager.meshes.insert(asset.clone());
 
         commands
             .entity(entity)
             .remove::<PendingMesh>()
             .insert(Mesh { id });
 
-        commands.spawn(PendingGPUMesh { id });
+        commands.spawn(GPUAssetUpload {
+            asset_bundle: GPUAssetBundle::MeshAsset(id, asset.into()),
+        });
     }
 }
 
@@ -113,23 +86,18 @@ pub fn load_material(
             continue;
         };
 
-        let id: MaterialId = material_manager.materials.insert(asset);
+        let id: MaterialId = material_manager.materials.insert(asset.clone());
 
         commands
             .entity(entity)
             .remove::<PendingMaterial>()
             .insert(Material { id });
 
-        commands.spawn(PendingGPUMaterial { id });
-
-        // NEED to upload a request to init the mesh CPU side taken from the GPU prepare
+        commands.spawn(GPUAssetUpload {
+            asset_bundle: GPUAssetBundle::MaterialAsset(id, asset.into()),
+        });
     }
 }
-
-// TODO: research obj and object file formats to parse, or find a create that parses the differnet
-// types of resources for to describe an object or series of objects or scene, maybe a pub fn
-// request_load_scene could be used, also need to load lights in the same way
-// NEED access to callback resources
 
 fn load_mesh_asset(source: &MeshSource) -> anyhow::Result<MeshAsset> {
     match source {

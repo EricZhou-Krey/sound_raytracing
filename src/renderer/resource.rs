@@ -1,5 +1,8 @@
 use crate::{
-    asset::manager::{MaterialId, MeshId},
+    asset::{
+        id::{MaterialId, MeshId},
+        loader::GPUAssetUpload,
+    },
     component::object::{Material, Mesh, Transform},
     renderer::{
         instance::InstanceManager,
@@ -76,6 +79,20 @@ pub struct RenderCallbackObjectQueryState {
         bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
 }
 
+#[derive(Debug, bevy_ecs::resource::Resource)]
+pub struct RenderCallbackUploadAssetQueryState {
+    pub query_state:
+        bevy_ecs::query::QueryState<(bevy_ecs::entity::Entity, &'static mut GPUAssetUpload)>,
+}
+
+impl RenderCallbackUploadAssetQueryState {
+    pub fn new(world: &mut bevy_ecs::world::World) -> Self {
+        Self {
+            query_state: world.query::<(bevy_ecs::entity::Entity, &mut GPUAssetUpload)>(),
+        }
+    }
+}
+
 impl RenderCallbackObjectQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {
@@ -86,7 +103,10 @@ impl RenderCallbackObjectQueryState {
 
 pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ecs::world::World) {
     let object_query: RenderCallbackObjectQueryState = RenderCallbackObjectQueryState::new(world);
+    let upload_query: RenderCallbackUploadAssetQueryState =
+        RenderCallbackUploadAssetQueryState::new(world);
     world.insert_resource(object_query);
+    world.insert_resource(upload_query);
 
     let wgpu_state: &eframe::egui_wgpu::RenderState =
         cc.wgpu_render_state.as_ref().expect("wgpu not enabled");

@@ -1,12 +1,5 @@
-use std::collections::HashMap;
-
+use crate::asset::id::TextureId;
 use wgpu::util::DeviceExt;
-
-use crate::asset::manager::TextureId;
-
-slotmap::new_key_type! {
-    pub struct GPUTextureKey;
-}
 
 #[derive(Debug, PartialEq)]
 pub struct GPUTexture {
@@ -17,8 +10,7 @@ pub struct GPUTexture {
 #[derive(Debug)]
 pub struct TextureManager {
     pub sampler: wgpu::Sampler,
-    pub textures: slotmap::SlotMap<GPUTextureKey, GPUTexture>,
-    pub id_key_mapping: HashMap<TextureId, GPUTextureKey>,
+    pub textures: slotmap::SlotMap<TextureId, GPUTexture>,
 }
 
 impl TextureManager {
@@ -26,7 +18,6 @@ impl TextureManager {
         Self {
             sampler,
             textures: slotmap::SlotMap::with_key(),
-            id_key_mapping: HashMap::new(),
         }
     }
 
@@ -35,7 +26,7 @@ impl TextureManager {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         image: image::DynamicImage,
-    ) -> GPUTextureKey {
+    ) -> TextureId {
         let image_rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image.to_rgba8();
         use image::GenericImageView;
         let dimensions = image.dimensions();

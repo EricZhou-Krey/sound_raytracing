@@ -1,8 +1,5 @@
 use crate::{
-    asset::manager::{
-        MaterialAsset, MaterialId, MaterialManager, MeshAsset, MeshId, MeshManager, TextureAsset,
-        TextureId,
-    },
+    asset::{loader::GPUAssetUpload, manager::AssetBundle},
     component::{
         camera::{ActiveCamera, CameraProjection},
         object::Transform,
@@ -12,27 +9,28 @@ use crate::{
         mesh::GPUMesh,
         resource::{
             GPUCamera, GPULight, GPUObject, GPUTransform, RenderCallbackObjectQueryState,
-            RenderResource,
+            RenderCallbackUploadAssetQueryState, RenderResource,
         },
     },
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
-pub struct RenderCallback<'a> {
+#[derive(Default, Debug, PartialEq)]
+pub struct RenderCallback {
     pub camera: GPUCamera,
     // pub lights: Vec<GPULight>,
     pub objects: Vec<GPUObject>,
-    pub pending_meshes: Vec<(MeshId, &'a MeshAsset)>,
-    pub pending_textures: Vec<(TextureId, &'a TextureAsset)>,
-    pub pending_materials: Vec<(MaterialId, &'a MaterialAsset)>,
+    pub uploaded_assets: Vec<AssetBundle>,
+    // pub pending_meshes: Vec<(MeshId, &'a MeshAsset)>,
+    // pub pending_textures: Vec<(TextureId, &'a TextureAsset)>,
+    // pub pending_materials: Vec<(MaterialId, &'a MaterialAsset)>,
 }
 
-impl<'a> RenderCallback<'a> {
+impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
         let objects: Vec<GPUObject> = Self::extract_objects(world);
-
+        let uploaded_assets: Vec<AssetBundle> = Self::extract_uploaded_assets(world);
         // Grab pending meshes, textures and materials, remove them from the world then create a
         // GPU handle when inserting them
 
@@ -40,7 +38,33 @@ impl<'a> RenderCallback<'a> {
             camera,
             // lights,
             objects,
+            uploaded_assets,
         }
+    }
+
+    fn extract_uploaded_assets(world: &mut bevy_ecs::world::World) -> Vec<AssetBundle> {
+        world.resource_scope(
+            |world,
+             mut query_state: bevy_ecs::change_detection::Mut<
+                RenderCallbackUploadAssetQueryState,
+            >| {
+                let entities: Vec<_> = query_state
+                    .query_state
+                    .iter(world)
+                    .map(|(entity, _upload)| entity)
+                    .collect();
+
+                entities
+                    .into_iter()
+                    .filter_map(|entity| {
+                        let upload = world.entity_mut(entity).take::<GPUAssetUpload>()?;
+
+                        world.despawn(entity);
+                        Some(upload.asset_bundle)
+                    })
+                    .collect()
+            },
+        )
     }
 
     fn extract_objects(world: &mut bevy_ecs::world::World) -> Vec<GPUObject> {
@@ -99,18 +123,29 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
             .get_mut()
             .expect("RenderResource missing");
 
+        for asset_bundle in self.uploaded_assets {
+            match asset_bundle {
+                AssetBundle::MeshAsset(id, asset) => {
+                    todo!();
+                }
+                AssetBundle::TextureAsset(id, asset) => {
+                    todo!();
+                }
+                AssetBundle::MaterialAsset(id, asset) => {
+                    todo!();
+                }
+            }
+        }
+
         queue.write_buffer(
             &render_resource.camera_buffer,
             0,
             bytemuck::bytes_of(&self.camera),
         );
 
-        render_resource.instance_manager.update_batches(
-            device,
-            &self.objects,
-            &render_resource.mesh_manager.id_key_mapping,
-            &render_resource.material_manager.id_key_mapping,
-        );
+        render_resource
+            .instance_manager
+            .update_batches(device, &self.objects);
 
         Vec::new()
     }

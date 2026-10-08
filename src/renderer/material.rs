@@ -1,31 +1,14 @@
-use std::collections::HashMap;
-
 use crate::{
-    asset::manager::MaterialId,
-    renderer::texture::{GPUTextureKey, TextureManager},
+    asset::id::{MaterialId, TextureId},
+    renderer::{asset::GPUMaterialAsset, texture::TextureManager},
 };
 use wgpu::util::DeviceExt;
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct GPUMaterialAsset {
-    pub base_color: [f32; 4],
-    pub metallic: f32,
-    pub roughness: f32,
-    pub base_color_texture: Option<GPUTextureKey>,
-    pub normal_texture: Option<GPUTextureKey>,
-    pub metallic_roughness_texture: Option<GPUTextureKey>,
-    pub occlusion_texture: Option<GPUTextureKey>,
-}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUMaterialUniforms {
     pub base_color: [f32; 4],
     pub metallic_roughness: [f32; 4],
-}
-
-slotmap::new_key_type! {
-    pub struct GPUMaterialKey;
 }
 
 #[derive(Debug)]
@@ -35,15 +18,14 @@ pub struct GPUMaterial {
 }
 
 pub struct DefaultTextures {
-    pub white: GPUTextureKey,
-    pub flat_normal: GPUTextureKey,
+    pub white: TextureId,
+    pub flat_normal: TextureId,
 }
 
 #[derive(Debug)]
 pub struct MaterialManager {
     pub bind_group_layout: wgpu::BindGroupLayout,
-    pub materials: slotmap::SlotMap<GPUMaterialKey, GPUMaterial>,
-    pub id_key_mapping: HashMap<MaterialId, GPUMaterialKey>,
+    pub materials: slotmap::SlotMap<MaterialId, GPUMaterial>,
 }
 
 impl MaterialManager {
@@ -51,7 +33,6 @@ impl MaterialManager {
         Self {
             bind_group_layout,
             materials: slotmap::SlotMap::with_key(),
-            id_key_mapping: HashMap::new(),
         }
     }
 
@@ -61,18 +42,17 @@ impl MaterialManager {
         material: &GPUMaterialAsset,
         texture_manager: &TextureManager,
         default_textures: &DefaultTextures,
-    ) -> GPUMaterialKey {
-        let base_color_key: GPUTextureKey = material
+    ) -> MaterialId {
+        let base_color_id: TextureId = material
             .base_color_texture
             .unwrap_or(default_textures.white);
-        let normal_key: GPUTextureKey = material
+        let normal_id: TextureId = material
             .normal_texture
             .unwrap_or(default_textures.flat_normal);
-        let metallic_roughness_key: GPUTextureKey = material
+        let metallic_roughness_id: TextureId = material
             .metallic_roughness_texture
             .unwrap_or(default_textures.white);
-        let occlusion_key: GPUTextureKey =
-            material.occlusion_texture.unwrap_or(default_textures.white);
+        let occlusion_id: TextureId = material.occlusion_texture.unwrap_or(default_textures.white);
 
         let uniforms: GPUMaterialUniforms = GPUMaterialUniforms {
             base_color: material.base_color,
@@ -86,11 +66,11 @@ impl MaterialManager {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        let base_color_view: &wgpu::TextureView = &texture_manager.textures[base_color_key].view;
-        let normal_view: &wgpu::TextureView = &texture_manager.textures[normal_key].view;
+        let base_color_view: &wgpu::TextureView = &texture_manager.textures[base_color_id].view;
+        let normal_view: &wgpu::TextureView = &texture_manager.textures[normal_id].view;
         let metallic_roughness_view: &wgpu::TextureView =
-            &texture_manager.textures[metallic_roughness_key].view;
-        let occlusion_view: &wgpu::TextureView = &texture_manager.textures[occlusion_key].view;
+            &texture_manager.textures[metallic_roughness_id].view;
+        let occlusion_view: &wgpu::TextureView = &texture_manager.textures[occlusion_id].view;
 
         let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Material Bind Group"),

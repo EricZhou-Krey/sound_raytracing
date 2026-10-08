@@ -1,16 +1,19 @@
-slotmap::new_key_type! {
-    pub struct MeshId;
-    pub struct TextureId;
-    pub struct MaterialId;
+use crate::asset::id::{MaterialId, MeshId, TextureId};
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Vertex {
+    pub position: glam::Vec3,
+    pub normal: glam::Vec3,
+    pub uv: glam::Vec2,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MeshAsset {
-    pub vertices: Vec<glam::Vec3>,
+    pub vertices: Vec<Vertex>,
     pub indices: Vec<usize>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TextureAsset {
     pub bytes: Vec<u8>,
 }

@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use wgpu::util::DeviceExt;
 
-use crate::asset::manager::MeshId;
+use crate::asset::{id::MeshId, manager::MeshAsset};
 
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -28,8 +26,17 @@ impl GPUVertex {
     }
 }
 
-slotmap::new_key_type! {
-    pub struct GPUMeshKey;
+#[repr(C)]
+#[derive(Default, Debug, PartialEq, Clone)]
+pub struct GPUMeshAsset {
+    pub vertices: Vec<GPUVertex>,
+    pub indices: Vec<u16>,
+}
+
+impl From<MeshAsset> for GPUMeshAsset {
+    fn from(value: MeshAsset) -> Self {
+        todo!()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,8 +48,7 @@ pub struct GPUMesh {
 
 #[derive(Debug)]
 pub struct MeshManager {
-    pub meshes: slotmap::SlotMap<GPUMeshKey, GPUMesh>,
-    pub id_key_mapping: HashMap<MeshId, GPUMeshKey>,
+    pub meshes: slotmap::SlotMap<MeshId, GPUMesh>,
 }
 
 impl Default for MeshManager {
@@ -55,7 +61,6 @@ impl MeshManager {
     pub fn new() -> Self {
         Self {
             meshes: slotmap::SlotMap::with_key(),
-            id_key_mapping: HashMap::new(),
         }
     }
     pub fn init_mesh(
@@ -63,7 +68,7 @@ impl MeshManager {
         device: &wgpu::Device,
         vertices: &[GPUVertex],
         indices: &[u16],
-    ) -> GPUMeshKey {
+    ) -> MeshId {
         let vertex_buffer: wgpu::Buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
