@@ -1,24 +1,38 @@
-use crate::asset::manager::Vertex;
+use crate::{
+    asset::{MeshAsset, TextureAsset},
+    component::object::Transform,
+};
+
+#[derive(Debug, Clone, Default)]
+pub struct SceneSource {
+    pub meshes: Vec<MeshSource>,
+    pub textures: Vec<TextureSource>,
+    pub materials: Vec<MaterialSource>,
+    pub objects: Vec<ObjectSource>,
+}
 
 #[derive(Debug, Clone)]
 pub enum MeshSource {
-    Path(String),
-    Description {
-        vertices: Vec<Vertex>,
-        indicies: Vec<usize>,
-    },
+    Description(MeshAsset),
 }
+
 #[derive(Debug, Clone)]
 pub enum TextureSource {
-    Path(String),
+    Description(TextureAsset),
 }
 
 #[derive(Debug, Clone)]
 pub enum MaterialSource {
-    Path(String),
     Description {
         base_color: [f32; 4],
-        metallic: f32,
-        roughness: f32,
+        base_color_texture: Option<usize>,
+        normal_texture: Option<usize>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectSource {
+    pub transform: Transform,
+    pub mesh: usize,
+    pub material: usize,
 }

@@ -1,16 +1,7 @@
+use crate::asset::{id::MeshId, MeshAsset, Vertex};
 use wgpu::util::DeviceExt;
 
-use crate::asset::{id::MeshId, manager::MeshAsset};
-
-#[repr(C)]
-#[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GPUVertex {
-    pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub uv: [f32; 2],
-}
-
-impl GPUVertex {
+impl Vertex {
     const ATTRIBUTES: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
         0 => Float32x3,
         1 => Float32x3,
@@ -26,19 +17,6 @@ impl GPUVertex {
     }
 }
 
-#[repr(C)]
-#[derive(Default, Debug, PartialEq, Clone)]
-pub struct GPUMeshAsset {
-    pub vertices: Vec<GPUVertex>,
-    pub indices: Vec<u16>,
-}
-
-impl From<MeshAsset> for GPUMeshAsset {
-    fn from(value: MeshAsset) -> Self {
-        todo!()
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct GPUMesh {
     pub vertex_buffer: wgpu::Buffer,
@@ -48,7 +26,7 @@ pub struct GPUMesh {
 
 #[derive(Debug)]
 pub struct MeshManager {
-    pub meshes: slotmap::SlotMap<MeshId, GPUMesh>,
+    pub meshes: slotmap::SecondaryMap<MeshId, GPUMesh>,
 }
 
 impl Default for MeshManager {
@@ -60,33 +38,31 @@ impl Default for MeshManager {
 impl MeshManager {
     pub fn new() -> Self {
         Self {
-            meshes: slotmap::SlotMap::with_key(),
+            meshes: slotmap::SecondaryMap::new(),
         }
     }
-    pub fn init_mesh(
-        &mut self,
-        device: &wgpu::Device,
-        vertices: &[GPUVertex],
-        indices: &[u16],
-    ) -> MeshId {
+    pub fn init_mesh(&mut self, device: &wgpu::Device, id: MeshId, asset: &MeshAsset) {
         let vertex_buffer: wgpu::Buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertices),
+                contents: bytemuck::cast_slice(&asset.vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             });
 
         let index_buffer: wgpu::Buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(indices),
+                contents: bytemuck::cast_slice(&asset.indices),
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        self.meshes.insert(GPUMesh {
-            vertex_buffer,
-            index_buffer,
-            num_indices: indices.len() as u32,
-        })
+        self.meshes.insert(
+            id,
+            GPUMesh {
+                vertex_buffer,
+                index_buffer,
+                num_indices: asset.indices.len() as u32,
+            },
+        );
     }
 }

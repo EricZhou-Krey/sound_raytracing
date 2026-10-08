@@ -1,5 +1,10 @@
 use crate::{
-    asset::{loader::GPUAssetUpload, manager::AssetBundle},
+    asset::{
+        id::{AssetId, MaterialId, MeshId, TextureId},
+        loader::GPUAssetUploader,
+        manager::{MaterialManager, MeshManager, TextureManager},
+        MaterialAsset, MeshAsset, TextureAsset,
+    },
     component::{
         camera::{ActiveCamera, CameraProjection},
         object::Transform,
@@ -9,62 +14,78 @@ use crate::{
         mesh::GPUMesh,
         resource::{
             GPUCamera, GPULight, GPUObject, GPUTransform, RenderCallbackObjectQueryState,
-            RenderCallbackUploadAssetQueryState, RenderResource,
+            RenderResource,
         },
     },
 };
 
 #[derive(Default, Debug, PartialEq)]
-pub struct RenderCallback {
+pub struct RenderCallback<'a> {
     pub camera: GPUCamera,
     // pub lights: Vec<GPULight>,
     pub objects: Vec<GPUObject>,
-    pub uploaded_assets: Vec<AssetBundle>,
-    // pub pending_meshes: Vec<(MeshId, &'a MeshAsset)>,
-    // pub pending_textures: Vec<(TextureId, &'a TextureAsset)>,
-    // pub pending_materials: Vec<(MaterialId, &'a MaterialAsset)>,
+    pub uploaded_meshes: Vec<(MeshId, &'a MeshAsset)>,
+    pub uploaded_textures: Vec<(TextureId, &'a TextureAsset)>,
+    pub uploaded_materials: Vec<(MaterialId, &'a MaterialAsset)>,
 }
 
-impl RenderCallback {
-    pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
+impl<'a> RenderCallback<'a> {
+    pub fn extract_from_world(world: &'a mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
         let objects: Vec<GPUObject> = Self::extract_objects(world);
-        let uploaded_assets: Vec<AssetBundle> = Self::extract_uploaded_assets(world);
-        // Grab pending meshes, textures and materials, remove them from the world then create a
-        // GPU handle when inserting them
+        let (uploaded_meshes, uploaded_textures, uploaded_materials): (
+            Vec<(MeshId, &'a MeshAsset)>,
+            Vec<(TextureId, &'a TextureAsset)>,
+            Vec<(MaterialId, &'a MaterialAsset)>,
+        ) = Self::extract_uploaded_assets(world);
 
         Self {
             camera,
             // lights,
             objects,
-            uploaded_assets,
+            uploaded_meshes,
+            uploaded_textures,
+            uploaded_materials,
         }
     }
 
-    fn extract_uploaded_assets(world: &mut bevy_ecs::world::World) -> Vec<AssetBundle> {
-        world.resource_scope(
-            |world,
-             mut query_state: bevy_ecs::change_detection::Mut<
-                RenderCallbackUploadAssetQueryState,
-            >| {
-                let entities: Vec<_> = query_state
-                    .query_state
-                    .iter(world)
-                    .map(|(entity, _upload)| entity)
-                    .collect();
+    fn extract_uploaded_assets(
+        world: &'a mut bevy_ecs::world::World,
+    ) -> (
+        Vec<(MeshId, &'a MeshAsset)>,
+        Vec<(TextureId, &'a TextureAsset)>,
+        Vec<(MaterialId, &'a MaterialAsset)>,
+    ) {
+        let asset_ids: Vec<AssetId> =
+            std::mem::take(&mut world.resource_mut::<GPUAssetUploader>().asset_ids);
 
-                entities
-                    .into_iter()
-                    .filter_map(|entity| {
-                        let upload = world.entity_mut(entity).take::<GPUAssetUpload>()?;
+        let meshes: &MeshManager = world.resource::<MeshManager>();
+        let textures: &TextureManager = world.resource::<TextureManager>();
+        let materials: &MaterialManager = world.resource::<MaterialManager>();
 
-                        world.despawn(entity);
-                        Some(upload.asset_bundle)
-                    })
-                    .collect()
-            },
-        )
+        let mut uploaded_meshes: Vec<(MeshId, &'a MeshAsset)> = Vec::new();
+        let mut uploaded_textures: Vec<(TextureId, &'a TextureAsset)> = Vec::new();
+        let mut uploaded_materials: Vec<(MaterialId, &'a MaterialAsset)> = Vec::new();
+
+        for asset_id in asset_ids {
+            match asset_id {
+                AssetId::Mesh(id) => {
+                    let asset = meshes.meshes.get(id).expect("missing mesh asset");
+                    uploaded_meshes.push((id, asset));
+                }
+                AssetId::Texture(id) => {
+                    let asset = textures.textures.get(id).expect("missing texture asset");
+                    uploaded_textures.push((id, asset));
+                }
+                AssetId::Material(id) => {
+                    let asset = materials.materials.get(id).expect("missing material asset");
+                    uploaded_materials.push((id, asset));
+                }
+            }
+        }
+
+        (uploaded_meshes, uploaded_textures, uploaded_materials)
     }
 
     fn extract_objects(world: &mut bevy_ecs::world::World) -> Vec<GPUObject> {
@@ -90,7 +111,7 @@ impl RenderCallback {
             )
     }
 
-    fn extract_lights(world: &bevy_ecs::world::World) -> Vec<GPULight> {
+    fn extract_lights(_world: &bevy_ecs::world::World) -> Vec<GPULight> {
         todo!()
     }
 
@@ -110,7 +131,7 @@ impl RenderCallback {
     }
 }
 
-impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
+impl eframe::egui_wgpu::CallbackTrait for RenderCallback<'_> {
     fn prepare(
         &self,
         device: &wgpu::Device,
@@ -122,20 +143,6 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
         let render_resource: &mut RenderResource = callback_resources
             .get_mut()
             .expect("RenderResource missing");
-
-        for asset_bundle in self.uploaded_assets {
-            match asset_bundle {
-                AssetBundle::MeshAsset(id, asset) => {
-                    todo!();
-                }
-                AssetBundle::TextureAsset(id, asset) => {
-                    todo!();
-                }
-                AssetBundle::MaterialAsset(id, asset) => {
-                    todo!();
-                }
-            }
-        }
 
         queue.write_buffer(
             &render_resource.camera_buffer,

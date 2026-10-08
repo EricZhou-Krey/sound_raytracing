@@ -1,138 +1,175 @@
 use bevy_ecs::{
     event::Event,
     observer::On,
-    prelude::{Commands, Component, Entity, Query, ResMut},
+    prelude::{Commands, ResMut},
+    resource::Resource,
 };
 
 use crate::{
     asset::{
-        id::{MaterialId, MeshId},
-        manager::{
-            MaterialAsset, MaterialManager, MeshAsset, MeshManager, TextureAsset, TextureManager,
-        },
-        source::{MaterialSource, MeshSource, TextureSource},
+        id::{AssetId, MaterialId, MeshId, TextureId},
+        manager::{MaterialManager, MeshManager, TextureManager},
+        source::{MaterialSource, MeshSource, SceneSource, TextureSource},
+        MaterialAsset, MeshAsset, TextureAsset,
     },
-    component::object::{Material, Mesh, Transform},
-    renderer::asset::GPUAssetBundle,
+    component::object::{Material, Mesh},
 };
 
-#[derive(Debug, Component)]
-pub struct GPUAssetUpload {
-    pub asset_bundle: GPUAssetBundle,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct PendingMesh {
-    pub source: MeshSource,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct PendingMaterial {
-    pub source: MaterialSource,
+#[derive(Default, Debug, Resource)]
+pub struct GPUAssetUploader {
+    pub asset_ids: Vec<AssetId>,
 }
 
 #[derive(Debug, Event)]
-pub struct RequestLoadObject {
-    pub mesh: MeshSource,
-    pub material: MaterialSource,
+pub struct RequestLoadScene {
+    pub scene: SceneSource,
 }
 
-pub fn request_init_object(trigger: On<RequestLoadObject>, mut commands: Commands) {
-    let event: &RequestLoadObject = trigger.event();
-
-    commands
-        .spawn(Transform::default())
-        .insert(PendingMesh {
-            source: event.mesh.clone(),
-        })
-        .insert(PendingMaterial {
-            source: event.material.clone(),
-        });
-}
-
-pub fn load_mesh(
+pub fn load_scene(
+    request: On<RequestLoadScene>,
     mut commands: Commands,
-    mut manager: ResMut<MeshManager>,
-    query: Query<(Entity, &PendingMesh)>,
-) {
-    for (entity, pending) in query.iter() {
-        let Ok(asset): anyhow::Result<MeshAsset> = load_mesh_asset(&pending.source) else {
-            continue;
-        };
-
-        let id: MeshId = manager.meshes.insert(asset.clone());
-
-        commands
-            .entity(entity)
-            .remove::<PendingMesh>()
-            .insert(Mesh { id });
-
-        commands.spawn(GPUAssetUpload {
-            asset_bundle: GPUAssetBundle::MeshAsset(id, asset.into()),
-        });
-    }
-}
-
-pub fn load_material(
-    mut commands: Commands,
-    mut material_manager: ResMut<MaterialManager>,
+    mut mesh_manager: ResMut<MeshManager>,
     mut texture_manager: ResMut<TextureManager>,
-    query: Query<(Entity, &PendingMaterial)>,
+    mut material_manager: ResMut<MaterialManager>,
+    mut asset_uploader: ResMut<GPUAssetUploader>,
 ) {
-    for (entity, pending) in query.iter() {
-        let Ok(asset): anyhow::Result<MaterialAsset> =
-            load_material_asset(&mut texture_manager, &pending.source)
-        else {
-            continue;
-        };
+    let scene: &SceneSource = &request.event().scene;
 
+    if let Err(error) = validate_scene(scene) {
+        commands.trigger(rook_terminal::event::TerminalOutput {
+            content: error.to_string(),
+            level: rook_terminal::event::OutputLevel::Error,
+        });
+        return;
+    }
+
+    let mut upload_ids: Vec<AssetId> = Vec::new();
+
+    let mut texture_ids: Vec<TextureId> = Vec::with_capacity(scene.textures.len());
+
+    for source in &scene.textures {
+        let asset: TextureAsset = load_texture_asset(source);
+        let id: TextureId = texture_manager.textures.insert(asset.clone());
+
+        upload_ids.push(AssetId::Texture(id));
+        texture_ids.push(id);
+    }
+
+    let mut mesh_ids: Vec<MeshId> = Vec::with_capacity(scene.meshes.len());
+
+    for source in &scene.meshes {
+        let asset: MeshAsset = load_mesh_asset(source);
+        let id: MeshId = mesh_manager.meshes.insert(asset.clone());
+
+        upload_ids.push(AssetId::Mesh(id));
+        mesh_ids.push(id);
+    }
+
+    let mut material_ids: Vec<MaterialId> = Vec::with_capacity(scene.materials.len());
+
+    for source in &scene.materials {
+        let asset: MaterialAsset = load_material_asset(source, &texture_ids);
         let id: MaterialId = material_manager.materials.insert(asset.clone());
 
-        commands
-            .entity(entity)
-            .remove::<PendingMaterial>()
-            .insert(Material { id });
+        upload_ids.push(AssetId::Material(id));
+        material_ids.push(id);
+    }
 
-        commands.spawn(GPUAssetUpload {
-            asset_bundle: GPUAssetBundle::MaterialAsset(id, asset.into()),
-        });
+    for object in &scene.objects {
+        commands.spawn((
+            object.transform.clone(),
+            Mesh {
+                id: mesh_ids[object.mesh],
+            },
+            Material {
+                id: material_ids[object.material],
+            },
+        ));
+    }
+
+    asset_uploader.asset_ids.append(&mut upload_ids);
+}
+
+fn validate_scene(scene: &SceneSource) -> anyhow::Result<()> {
+    for (index, source) in scene.meshes.iter().enumerate() {
+        let MeshSource::Description(mesh) = source;
+
+        for &vertex_index in &mesh.indices {
+            anyhow::ensure!(
+                (vertex_index as usize) < mesh.vertices.len(),
+                "mesh {index} has out-of-range vertex index {vertex_index}"
+            );
+        }
+    }
+
+    for (index, source) in scene.textures.iter().enumerate() {
+        let TextureSource::Description(texture) = source;
+
+        let expected_len: usize = (texture.width as usize)
+            .checked_mul(texture.height as usize)
+            .and_then(|pixel_count| pixel_count.checked_mul(4))
+            .ok_or_else(|| anyhow::anyhow!("texture {index} dimensions overflow"))?;
+
+        anyhow::ensure!(
+            texture.rgba8.len() == expected_len,
+            "texture {index}: expected {expected_len} RGBA8 bytes, got {}",
+            texture.rgba8.len()
+        );
+    }
+
+    for (index, source) in scene.materials.iter().enumerate() {
+        let MaterialSource::Description {
+            base_color_texture,
+            normal_texture,
+            ..
+        } = source;
+
+        for texture_index in [*base_color_texture, *normal_texture].into_iter().flatten() {
+            anyhow::ensure!(
+                texture_index < scene.textures.len(),
+                "material {index} references missing texture {texture_index}"
+            );
+        }
+    }
+
+    for (index, object) in scene.objects.iter().enumerate() {
+        anyhow::ensure!(
+            object.mesh < scene.meshes.len(),
+            "object {index} references missing mesh {}",
+            object.mesh
+        );
+        anyhow::ensure!(
+            object.material < scene.materials.len(),
+            "object {index} references missing material {}",
+            object.material
+        );
+    }
+
+    Ok(())
+}
+
+fn load_mesh_asset(source: &MeshSource) -> MeshAsset {
+    match source {
+        MeshSource::Description(asset) => asset.clone(),
     }
 }
 
-fn load_mesh_asset(source: &MeshSource) -> anyhow::Result<MeshAsset> {
+fn load_texture_asset(source: &TextureSource) -> TextureAsset {
     match source {
-        MeshSource::Path(_path) => todo!(),
-        MeshSource::Description { vertices, indicies } => Ok(MeshAsset {
-            vertices: vertices.clone(),
-            indices: indicies.clone(),
-        }),
+        TextureSource::Description(asset) => asset.clone(),
     }
 }
 
-fn load_texture_asset(source: &TextureSource) -> anyhow::Result<TextureAsset> {
+fn load_material_asset(source: &MaterialSource, texture_ids: &[TextureId]) -> MaterialAsset {
     match source {
-        TextureSource::Path(_path) => todo!(),
-    }
-}
-
-fn load_material_asset(
-    mut _texture_manager: &mut ResMut<TextureManager>,
-    source: &MaterialSource,
-) -> anyhow::Result<MaterialAsset> {
-    match source {
-        MaterialSource::Path(_path) => todo!(),
         MaterialSource::Description {
             base_color,
-            metallic,
-            roughness,
-        } => Ok(MaterialAsset {
+            base_color_texture,
+            normal_texture,
+        } => MaterialAsset {
             base_color: *base_color,
-            metallic: *metallic,
-            roughness: *roughness,
-            base_color_texture: None,
-            normal_texture: None,
-            metallic_roughness_texture: None,
-            occlusion_texture: None,
-        }),
+            base_color_texture: base_color_texture.map(|index| texture_ids[index]),
+            normal_texture: normal_texture.map(|index| texture_ids[index]),
+        },
     }
 }

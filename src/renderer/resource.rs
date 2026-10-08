@@ -79,20 +79,6 @@ pub struct RenderCallbackObjectQueryState {
         bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
 }
 
-#[derive(Debug, bevy_ecs::resource::Resource)]
-pub struct RenderCallbackUploadAssetQueryState {
-    pub query_state:
-        bevy_ecs::query::QueryState<(bevy_ecs::entity::Entity, &'static mut GPUAssetUpload)>,
-}
-
-impl RenderCallbackUploadAssetQueryState {
-    pub fn new(world: &mut bevy_ecs::world::World) -> Self {
-        Self {
-            query_state: world.query::<(bevy_ecs::entity::Entity, &mut GPUAssetUpload)>(),
-        }
-    }
-}
-
 impl RenderCallbackObjectQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {

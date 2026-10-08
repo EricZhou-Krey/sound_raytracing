@@ -1,6 +1,6 @@
 use crate::{
     asset::{
-        loader::{load_material, load_mesh, request_init_object},
+        loader::{load_material, load_mesh, request_init_object, GPUAssetUploader},
         manager::{MaterialManager, MeshManager, TextureManager},
     },
     component::{
@@ -13,7 +13,7 @@ use crate::{
 use bevy_ecs::{
     entity::Entity,
     schedule::{IntoScheduleConfigs, Schedule},
-    world::{Mut, World},
+    world::{self, Mut, World},
 };
 use eframe::CreationContext;
 use rook_terminal::{command::HelpCommand, Terminal, TerminalCommandEvent, TerminalWorldExtension};
@@ -56,6 +56,7 @@ impl RaytraceApp {
         world.insert_resource(MeshManager::default());
         world.insert_resource(TextureManager::default());
         world.insert_resource(MaterialManager::default());
+        world.insert_resource(GPUAssetUploader::default());
         world.insert_resource(TerminalDebugSettings::default());
 
         world.add_observer(request_init_object);
