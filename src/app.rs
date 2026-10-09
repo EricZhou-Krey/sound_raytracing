@@ -1,6 +1,6 @@
 use crate::{
-    asset::AssetWorldExtension,
-    demo::DemoWorldExtension,
+    asset::{AssetWorldExtension, FrameDelta},
+    demo::{DemoScheduleExtension, DemoWorldExtension},
     renderer::{resource::init_callback_resources, Renderer},
 };
 use bevy_ecs::{schedule::Schedule, world::World};
@@ -29,7 +29,8 @@ impl RaytraceApp {
 
         init_callback_resources(cc, &mut world);
 
-        let schedule: Schedule = Schedule::default();
+        let mut schedule: Schedule = Schedule::default();
+        schedule.setup_demo();
 
         Self { world, schedule }
     }
@@ -59,7 +60,12 @@ impl eframe::App for RaytraceApp {
         });
     }
 
-    fn logic(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let dt: f32 = ctx.input(|input| input.stable_dt.min(0.1));
+
+        self.world.resource_mut::<FrameDelta>().0 = dt;
         self.schedule.run(&mut self.world);
+
+        ctx.request_repaint();
     }
 }

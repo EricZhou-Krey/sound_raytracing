@@ -1,4 +1,4 @@
-use bevy_ecs::world::World;
+use bevy_ecs::{resource::Resource, world::World};
 
 use crate::{
     asset::{
@@ -42,6 +42,9 @@ pub struct MaterialAsset {
     pub normal_texture: TextureId,
 }
 
+#[derive(Default, Debug, PartialEq, Resource)]
+pub struct FrameDelta(pub f32);
+
 pub trait AssetWorldExtension {
     fn setup_assets(&mut self);
 }
@@ -53,6 +56,7 @@ impl AssetWorldExtension for World {
         self.insert_resource(MaterialManager::default());
         self.insert_resource(TerminalDebugSettings::default());
         self.insert_resource(GPUAssetUploader::default());
+        self.insert_resource(FrameDelta::default());
         self.add_observer(load_scene);
     }
 }

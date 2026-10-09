@@ -2,14 +2,21 @@ use crate::{
     asset::{
         loader::RequestLoadScene,
         source::{MaterialSource, MeshSource, ObjectSource, SceneSource, TextureSource},
-        MeshAsset, TextureAsset, Vertex,
+        FrameDelta, MeshAsset, TextureAsset, Vertex,
     },
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
         object::Transform,
     },
 };
-use bevy_ecs::{entity::Entity, world::World};
+use bevy_ecs::{
+    entity::Entity,
+    query::With,
+    schedule::Schedule,
+    system::{Query, Res},
+    world::World,
+};
+use glam::Vec3;
 
 pub trait DemoWorldExtension {
     fn setup_demo(&mut self);
@@ -41,6 +48,37 @@ impl DemoWorldExtension for World {
         self.trigger(RequestLoadScene {
             scene: demo_scene(),
         });
+    }
+}
+
+pub trait DemoScheduleExtension {
+    fn setup_demo(&mut self);
+}
+
+impl DemoScheduleExtension for Schedule {
+    fn setup_demo(&mut self) {
+        self.add_systems(rotate_camera_around_origin);
+    }
+}
+
+fn rotate_camera_around_origin(
+    mut transforms: Query<&mut Transform, With<Camera>>,
+    dt: Res<FrameDelta>,
+) {
+    for mut transform in transforms.iter_mut() {
+        let offset: Vec3 = transform.translation;
+        let radius: f32 = offset.x.hypot(offset.z);
+        if radius == 0.0 {
+            return;
+        }
+
+        let angle: f32 = offset.z.atan2(offset.x) + 0.5 * dt.0;
+
+        transform.translation.x = radius * angle.cos();
+        transform.translation.z = radius * angle.sin();
+
+        let direction: Vec3 = (glam::Vec3::ZERO - transform.translation).normalize();
+        transform.rotation = glam::Quat::from_rotation_arc(glam::Vec3::NEG_Z, direction);
     }
 }
 
