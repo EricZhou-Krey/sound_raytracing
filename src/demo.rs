@@ -17,12 +17,14 @@ pub trait DemoWorldExtension {
 
 impl DemoWorldExtension for World {
     fn setup_demo(&mut self) {
+        let camera_position: glam::Vec3 = glam::Vec3::new(2.0, -2.0, 5.0);
+        let direction: glam::Vec3 = (glam::Vec3::ZERO - camera_position).normalize();
         let camera: Entity = self
             .spawn((
                 Camera,
                 Transform {
-                    translation: glam::Vec3::new(0.0, 0.0, 5.0),
-                    rotation: glam::Quat::IDENTITY,
+                    translation: camera_position,
+                    rotation: glam::Quat::from_rotation_arc(glam::Vec3::NEG_Z, direction),
                     scale: glam::Vec3::ONE,
                 },
             ))
@@ -42,34 +44,109 @@ impl DemoWorldExtension for World {
     }
 }
 
-fn demo_scene() -> SceneSource {
-    let mesh = MeshAsset {
-        vertices: vec![
-            Vertex {
-                position: [-0.5, -0.5, 0.0],
-                normal: [0.0, 0.0, -1.0],
-                uv: [0.0, 1.0],
-            },
-            Vertex {
-                position: [0.5, -0.5, 0.0],
-                normal: [0.0, 0.0, -1.0],
-                uv: [1.0, 1.0],
-            },
-            Vertex {
-                position: [0.5, 0.5, 0.0],
-                normal: [0.0, 0.0, -1.0],
-                uv: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-0.5, 0.5, 0.0],
-                normal: [0.0, 0.0, -1.0],
-                uv: [0.0, 0.0],
-            },
-        ],
-        indices: vec![0, 2, 1, 0, 3, 2],
-    };
+fn cube_mesh() -> MeshAsset {
+    let mut vertices = Vec::with_capacity(24);
+    let mut indices = Vec::with_capacity(36);
 
-    let base_color_texture = TextureAsset {
+    fn add_face(
+        vertices: &mut Vec<Vertex>,
+        indices: &mut Vec<u32>,
+        corners: [[f32; 3]; 4],
+        normal: [f32; 3],
+    ) {
+        let base = vertices.len() as u32;
+        let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+
+        for (position, uv) in corners.into_iter().zip(uvs) {
+            vertices.push(Vertex {
+                position,
+                normal,
+                uv,
+            });
+        }
+
+        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [-0.5, -0.5, 0.5],
+            [0.5, -0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [-0.5, 0.5, 0.5],
+        ],
+        [0.0, 0.0, 1.0],
+    );
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [0.5, -0.5, -0.5],
+            [-0.5, -0.5, -0.5],
+            [-0.5, 0.5, -0.5],
+            [0.5, 0.5, -0.5],
+        ],
+        [0.0, 0.0, -1.0],
+    );
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [0.5, -0.5, 0.5],
+            [0.5, -0.5, -0.5],
+            [0.5, 0.5, -0.5],
+            [0.5, 0.5, 0.5],
+        ],
+        [1.0, 0.0, 0.0],
+    );
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [-0.5, -0.5, -0.5],
+            [-0.5, -0.5, 0.5],
+            [-0.5, 0.5, 0.5],
+            [-0.5, 0.5, -0.5],
+        ],
+        [-1.0, 0.0, 0.0],
+    );
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [-0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, -0.5],
+            [-0.5, 0.5, -0.5],
+        ],
+        [0.0, 1.0, 0.0],
+    );
+
+    add_face(
+        &mut vertices,
+        &mut indices,
+        [
+            [-0.5, -0.5, -0.5],
+            [0.5, -0.5, -0.5],
+            [0.5, -0.5, 0.5],
+            [-0.5, -0.5, 0.5],
+        ],
+        [0.0, -1.0, 0.0],
+    );
+
+    MeshAsset { vertices, indices }
+}
+
+fn demo_scene() -> SceneSource {
+    let mesh: MeshAsset = cube_mesh();
+
+    let base_color_texture: TextureAsset = TextureAsset {
         width: 2,
         height: 2,
         rgba8: vec![
@@ -77,7 +154,7 @@ fn demo_scene() -> SceneSource {
         ],
     };
 
-    let normal_texture = TextureAsset {
+    let normal_texture: TextureAsset = TextureAsset {
         width: 1,
         height: 1,
         rgba8: vec![128, 128, 255, 255],
@@ -94,34 +171,14 @@ fn demo_scene() -> SceneSource {
             base_color_texture: 0,
             normal_texture: 1,
         }],
-        objects: vec![
-            ObjectSource {
-                transform: Transform {
-                    translation: glam::Vec3::new(-1.2, 0.0, 0.0),
-                    rotation: glam::Quat::IDENTITY,
-                    scale: glam::Vec3::ONE,
-                },
-                mesh: 0,
-                material: 0,
+        objects: vec![ObjectSource {
+            transform: Transform {
+                translation: glam::Vec3::ZERO,
+                rotation: glam::Quat::IDENTITY,
+                scale: glam::Vec3::splat(1.5),
             },
-            ObjectSource {
-                transform: Transform {
-                    translation: glam::Vec3::ZERO,
-                    rotation: glam::Quat::IDENTITY,
-                    scale: glam::Vec3::splat(1.4),
-                },
-                mesh: 0,
-                material: 0,
-            },
-            ObjectSource {
-                transform: Transform {
-                    translation: glam::Vec3::new(1.2, 0.0, 0.0),
-                    rotation: glam::Quat::IDENTITY,
-                    scale: glam::Vec3::ONE,
-                },
-                mesh: 0,
-                material: 0,
-            },
-        ],
+            mesh: 0,
+            material: 0,
+        }],
     }
 }
