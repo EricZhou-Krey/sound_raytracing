@@ -25,8 +25,8 @@ pub enum TextureSource {
 pub enum MaterialSource {
     Description {
         base_color: [f32; 4],
-        base_color_texture: Option<usize>,
-        normal_texture: Option<usize>,
+        base_color_texture: usize,
+        normal_texture: usize,
     },
 }
 

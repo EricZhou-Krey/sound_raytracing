@@ -1,13 +1,11 @@
 use crate::{
     asset::{
         id::{MaterialId, MeshId},
-        loader::GPUAssetUpload,
+        Vertex,
     },
     component::object::{Material, Mesh, Transform},
     renderer::{
-        instance::InstanceManager,
-        material::MaterialManager,
-        mesh::{GPUVertex, MeshManager},
+        instance::InstanceManager, material::MaterialManager, mesh::MeshManager,
         texture::TextureManager,
     },
 };
@@ -89,10 +87,7 @@ impl RenderCallbackObjectQueryState {
 
 pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ecs::world::World) {
     let object_query: RenderCallbackObjectQueryState = RenderCallbackObjectQueryState::new(world);
-    let upload_query: RenderCallbackUploadAssetQueryState =
-        RenderCallbackUploadAssetQueryState::new(world);
     world.insert_resource(object_query);
-    world.insert_resource(upload_query);
 
     let wgpu_state: &eframe::egui_wgpu::RenderState =
         cc.wgpu_render_state.as_ref().expect("wgpu not enabled");
@@ -224,7 +219,7 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Some(GPUVertex::layout()), Some(GPUTransform::layout())],
+                buffers: &[Some(Vertex::layout()), Some(GPUTransform::layout())],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {

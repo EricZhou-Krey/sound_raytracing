@@ -1,4 +1,4 @@
-use crate::asset::id::TextureId;
+use crate::asset::{id::TextureId, TextureAsset};
 use wgpu::util::DeviceExt;
 
 #[derive(Debug, PartialEq)]
@@ -10,14 +10,14 @@ pub struct GPUTexture {
 #[derive(Debug)]
 pub struct TextureManager {
     pub sampler: wgpu::Sampler,
-    pub textures: slotmap::SlotMap<TextureId, GPUTexture>,
+    pub textures: slotmap::SecondaryMap<TextureId, GPUTexture>,
 }
 
 impl TextureManager {
     pub fn new(sampler: wgpu::Sampler) -> Self {
         Self {
             sampler,
-            textures: slotmap::SlotMap::with_key(),
+            textures: slotmap::SecondaryMap::new(),
         }
     }
 
@@ -25,15 +25,12 @@ impl TextureManager {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        image: image::DynamicImage,
-    ) -> TextureId {
-        let image_rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image.to_rgba8();
-        use image::GenericImageView;
-        let dimensions = image.dimensions();
-
+        id: TextureId,
+        asset: &TextureAsset,
+    ) {
         let texture_size: wgpu::Extent3d = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
+            width: asset.width,
+            height: asset.height,
             depth_or_array_layers: 1,
         };
 
@@ -50,11 +47,11 @@ impl TextureManager {
                 view_formats: &[],
             },
             wgpu::wgt::TextureDataOrder::MipMajor,
-            &image_rgba,
+            &asset.rgba8,
         );
 
         let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.textures.insert(GPUTexture { texture, view })
+        self.textures.insert(id, GPUTexture { texture, view });
     }
 }

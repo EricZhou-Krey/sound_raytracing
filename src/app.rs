@@ -1,7 +1,8 @@
 use crate::{
     asset::{
-        loader::{load_material, load_mesh, request_init_object, GPUAssetUploader},
+        loader::load_scene,
         manager::{MaterialManager, MeshManager, TextureManager},
+        AssetWorldExtension,
     },
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
@@ -10,13 +11,12 @@ use crate::{
     renderer::{resource::init_callback_resources, Renderer},
     resource::terminal_debug_settings::TerminalDebugSettings,
 };
-use bevy_ecs::{
-    entity::Entity,
-    schedule::{IntoScheduleConfigs, Schedule},
-    world::{self, Mut, World},
-};
+use bevy_ecs::{entity::Entity, schedule::Schedule, world::World};
 use eframe::CreationContext;
-use rook_terminal::{command::HelpCommand, Terminal, TerminalCommandEvent, TerminalWorldExtension};
+use rook_terminal::{
+    command::HelpCommand, event::TerminalCommandRequested, TerminalInputState, TerminalSession,
+    TerminalViewState, TerminalWorldExtension,
+};
 
 pub struct RaytraceApp {
     pub world: World,
@@ -27,8 +27,9 @@ impl RaytraceApp {
     pub fn new(cc: &CreationContext) -> Self {
         let mut world: World = World::new();
         world.setup_terminal();
+        world.setup_assets();
 
-        world.trigger(TerminalCommandEvent {
+        world.trigger(TerminalCommandRequested {
             raw_command: HelpCommand::name().to_string(),
         });
         world.flush();
@@ -53,15 +54,8 @@ impl RaytraceApp {
             z_near: 0.1,
             z_far: 1000.0,
         });
-        world.insert_resource(MeshManager::default());
-        world.insert_resource(TextureManager::default());
-        world.insert_resource(MaterialManager::default());
-        world.insert_resource(GPUAssetUploader::default());
-        world.insert_resource(TerminalDebugSettings::default());
 
-        world.add_observer(request_init_object);
-        let mut schedule: Schedule = Schedule::default();
-        schedule.add_systems((load_mesh, load_material).chain());
+        let schedule: Schedule = Schedule::default();
 
         Self { world, schedule }
     }
@@ -70,9 +64,15 @@ impl RaytraceApp {
 impl eframe::App for RaytraceApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         egui::Panel::left("Terminal").show(ui, |ui: &mut egui::Ui| {
-            let pending_event: Option<TerminalCommandEvent> = self
+            let pending_event: Option<TerminalCommandRequested> = self
                 .world
-                .resource_scope(|_world: &mut World, mut terminal: Mut<Terminal>| terminal.ui(ui));
+                .resource_scope::<TerminalSession, _>(|world, mut terminal_session| {
+                    world.resource_scope::<TerminalInputState, _>(|world, mut input_state| {
+                        let view_state = world.resource::<TerminalViewState>();
+
+                        terminal_session.ui(&mut input_state, view_state, ui)
+                    })
+                });
 
             if let Some(event) = pending_event {
                 self.world.trigger(event);

@@ -1,15 +1,11 @@
 use crate::{
-    asset::id::{MaterialId, TextureId},
-    renderer::{asset::GPUMaterialAsset, texture::TextureManager},
+    asset::{
+        id::{MaterialId, TextureId},
+        MaterialAsset,
+    },
+    renderer::texture::TextureManager,
 };
 use wgpu::util::DeviceExt;
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GPUMaterialUniforms {
-    pub base_color: [f32; 4],
-    pub metallic_roughness: [f32; 4],
-}
 
 #[derive(Debug)]
 pub struct GPUMaterial {
@@ -17,6 +13,7 @@ pub struct GPUMaterial {
     pub bind_group: wgpu::BindGroup,
 }
 
+#[derive(Debug)]
 pub struct DefaultTextures {
     pub white: TextureId,
     pub flat_normal: TextureId,
@@ -25,52 +22,34 @@ pub struct DefaultTextures {
 #[derive(Debug)]
 pub struct MaterialManager {
     pub bind_group_layout: wgpu::BindGroupLayout,
-    pub materials: slotmap::SlotMap<MaterialId, GPUMaterial>,
+    pub materials: slotmap::SecondaryMap<MaterialId, GPUMaterial>,
 }
 
 impl MaterialManager {
     pub fn new(bind_group_layout: wgpu::BindGroupLayout) -> Self {
         Self {
             bind_group_layout,
-            materials: slotmap::SlotMap::with_key(),
+            materials: slotmap::SecondaryMap::new(),
         }
     }
 
     pub fn init_material(
         &mut self,
         device: &wgpu::Device,
-        material: &GPUMaterialAsset,
+        id: MaterialId,
+        asset: &MaterialAsset,
         texture_manager: &TextureManager,
-        default_textures: &DefaultTextures,
-    ) -> MaterialId {
-        let base_color_id: TextureId = material
-            .base_color_texture
-            .unwrap_or(default_textures.white);
-        let normal_id: TextureId = material
-            .normal_texture
-            .unwrap_or(default_textures.flat_normal);
-        let metallic_roughness_id: TextureId = material
-            .metallic_roughness_texture
-            .unwrap_or(default_textures.white);
-        let occlusion_id: TextureId = material.occlusion_texture.unwrap_or(default_textures.white);
-
-        let uniforms: GPUMaterialUniforms = GPUMaterialUniforms {
-            base_color: material.base_color,
-            metallic_roughness: [material.metallic, material.roughness, 0.0, 0.0],
-        };
-
+    ) {
         let uniform_buffer: wgpu::Buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Material Uniform Buffer"),
-                contents: bytemuck::bytes_of(&uniforms),
+                contents: bytemuck::cast_slice(&asset.base_color),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        let base_color_view: &wgpu::TextureView = &texture_manager.textures[base_color_id].view;
-        let normal_view: &wgpu::TextureView = &texture_manager.textures[normal_id].view;
-        let metallic_roughness_view: &wgpu::TextureView =
-            &texture_manager.textures[metallic_roughness_id].view;
-        let occlusion_view: &wgpu::TextureView = &texture_manager.textures[occlusion_id].view;
+        let base_color_view: &wgpu::TextureView =
+            &texture_manager.textures[asset.base_color_texture].view;
+        let normal_view: &wgpu::TextureView = &texture_manager.textures[asset.normal_texture].view;
 
         let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Material Bind Group"),
@@ -90,22 +69,17 @@ impl MaterialManager {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(metallic_roughness_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(occlusion_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
                     resource: wgpu::BindingResource::Sampler(&texture_manager.sampler),
                 },
             ],
         });
 
-        self.materials.insert(GPUMaterial {
-            uniform_buffer,
-            bind_group,
-        })
+        self.materials.insert(
+            id,
+            GPUMaterial {
+                uniform_buffer,
+                bind_group,
+            },
+        );
     }
 }

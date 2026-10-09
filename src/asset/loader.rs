@@ -124,7 +124,7 @@ fn validate_scene(scene: &SceneSource) -> anyhow::Result<()> {
             ..
         } = source;
 
-        for texture_index in [*base_color_texture, *normal_texture].into_iter().flatten() {
+        for texture_index in [*base_color_texture, *normal_texture] {
             anyhow::ensure!(
                 texture_index < scene.textures.len(),
                 "material {index} references missing texture {texture_index}"
@@ -168,8 +168,8 @@ fn load_material_asset(source: &MaterialSource, texture_ids: &[TextureId]) -> Ma
             normal_texture,
         } => MaterialAsset {
             base_color: *base_color,
-            base_color_texture: base_color_texture.map(|index| texture_ids[index]),
-            normal_texture: normal_texture.map(|index| texture_ids[index]),
+            base_color_texture: texture_ids[*base_color_texture],
+            normal_texture: texture_ids[*normal_texture],
         },
     }
 }

@@ -1,4 +1,13 @@
-use crate::asset::id::TextureId;
+use bevy_ecs::world::World;
+
+use crate::{
+    asset::{
+        id::TextureId,
+        loader::{load_scene, GPUAssetUploader},
+        manager::{MaterialManager, MeshManager, TextureManager},
+    },
+    resource::terminal_debug_settings::TerminalDebugSettings,
+};
 
 pub mod id;
 pub mod loader;
@@ -20,25 +29,30 @@ pub struct MeshAsset {
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct SamplerDesc {
-    pub address_u: wgpu::AddressMode,
-    pub address_v: wgpu::AddressMode,
-    pub mag_filter: wgpu::FilterMode,
-    pub min_filter: wgpu::FilterMode,
-    pub mipmap_filter: wgpu::MipmapFilterMode,
-}
-
-#[derive(Default, Debug, Clone, PartialEq)]
 pub struct TextureAsset {
     pub width: u32,
     pub height: u32,
     pub rgba8: Vec<u8>,
-    pub sampler: SamplerDesc,
 }
 
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct MaterialAsset {
     pub base_color: [f32; 4],
-    pub base_color_texture: Option<TextureId>,
-    pub normal_texture: Option<TextureId>,
+    pub base_color_texture: TextureId,
+    pub normal_texture: TextureId,
+}
+
+pub trait AssetWorldExtension {
+    fn setup_assets(&mut self);
+}
+
+impl AssetWorldExtension for World {
+    fn setup_assets(&mut self) {
+        self.insert_resource(MeshManager::default());
+        self.insert_resource(TextureManager::default());
+        self.insert_resource(MaterialManager::default());
+        self.insert_resource(TerminalDebugSettings::default());
+        self.insert_resource(GPUAssetUploader::default());
+        self.add_observer(load_scene);
+    }
 }

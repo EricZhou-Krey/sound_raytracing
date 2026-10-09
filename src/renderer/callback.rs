@@ -20,24 +20,24 @@ use crate::{
 };
 
 #[derive(Default, Debug, PartialEq)]
-pub struct RenderCallback<'a> {
+pub struct RenderCallback {
     pub camera: GPUCamera,
     // pub lights: Vec<GPULight>,
     pub objects: Vec<GPUObject>,
-    pub uploaded_meshes: Vec<(MeshId, &'a MeshAsset)>,
-    pub uploaded_textures: Vec<(TextureId, &'a TextureAsset)>,
-    pub uploaded_materials: Vec<(MaterialId, &'a MaterialAsset)>,
+    pub uploaded_meshes: Vec<(MeshId, MeshAsset)>,
+    pub uploaded_textures: Vec<(TextureId, TextureAsset)>,
+    pub uploaded_materials: Vec<(MaterialId, MaterialAsset)>,
 }
 
-impl<'a> RenderCallback<'a> {
-    pub fn extract_from_world(world: &'a mut bevy_ecs::world::World) -> Self {
+impl RenderCallback {
+    pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
         let objects: Vec<GPUObject> = Self::extract_objects(world);
         let (uploaded_meshes, uploaded_textures, uploaded_materials): (
-            Vec<(MeshId, &'a MeshAsset)>,
-            Vec<(TextureId, &'a TextureAsset)>,
-            Vec<(MaterialId, &'a MaterialAsset)>,
+            Vec<(MeshId, MeshAsset)>,
+            Vec<(TextureId, TextureAsset)>,
+            Vec<(MaterialId, MaterialAsset)>,
         ) = Self::extract_uploaded_assets(world);
 
         Self {
@@ -51,11 +51,11 @@ impl<'a> RenderCallback<'a> {
     }
 
     fn extract_uploaded_assets(
-        world: &'a mut bevy_ecs::world::World,
+        world: &mut bevy_ecs::world::World,
     ) -> (
-        Vec<(MeshId, &'a MeshAsset)>,
-        Vec<(TextureId, &'a TextureAsset)>,
-        Vec<(MaterialId, &'a MaterialAsset)>,
+        Vec<(MeshId, MeshAsset)>,
+        Vec<(TextureId, TextureAsset)>,
+        Vec<(MaterialId, MaterialAsset)>,
     ) {
         let asset_ids: Vec<AssetId> =
             std::mem::take(&mut world.resource_mut::<GPUAssetUploader>().asset_ids);
@@ -64,23 +64,25 @@ impl<'a> RenderCallback<'a> {
         let textures: &TextureManager = world.resource::<TextureManager>();
         let materials: &MaterialManager = world.resource::<MaterialManager>();
 
-        let mut uploaded_meshes: Vec<(MeshId, &'a MeshAsset)> = Vec::new();
-        let mut uploaded_textures: Vec<(TextureId, &'a TextureAsset)> = Vec::new();
-        let mut uploaded_materials: Vec<(MaterialId, &'a MaterialAsset)> = Vec::new();
+        let mut uploaded_meshes: Vec<(MeshId, MeshAsset)> = Vec::new();
+        let mut uploaded_textures: Vec<(TextureId, TextureAsset)> = Vec::new();
+        let mut uploaded_materials: Vec<(MaterialId, MaterialAsset)> = Vec::new();
 
         for asset_id in asset_ids {
             match asset_id {
                 AssetId::Mesh(id) => {
-                    let asset = meshes.meshes.get(id).expect("missing mesh asset");
-                    uploaded_meshes.push((id, asset));
+                    let asset: &MeshAsset = meshes.meshes.get(id).expect("missing mesh asset");
+                    uploaded_meshes.push((id, asset.clone()));
                 }
                 AssetId::Texture(id) => {
-                    let asset = textures.textures.get(id).expect("missing texture asset");
-                    uploaded_textures.push((id, asset));
+                    let asset: &TextureAsset =
+                        textures.textures.get(id).expect("missing texture asset");
+                    uploaded_textures.push((id, asset.clone()));
                 }
                 AssetId::Material(id) => {
-                    let asset = materials.materials.get(id).expect("missing material asset");
-                    uploaded_materials.push((id, asset));
+                    let asset: &MaterialAsset =
+                        materials.materials.get(id).expect("missing material asset");
+                    uploaded_materials.push((id, asset.clone()));
                 }
             }
         }
@@ -131,7 +133,7 @@ impl<'a> RenderCallback<'a> {
     }
 }
 
-impl eframe::egui_wgpu::CallbackTrait for RenderCallback<'_> {
+impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
     fn prepare(
         &self,
         device: &wgpu::Device,
@@ -143,6 +145,25 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback<'_> {
         let render_resource: &mut RenderResource = callback_resources
             .get_mut()
             .expect("RenderResource missing");
+
+        for (mesh_id, mesh_asset) in &self.uploaded_meshes {
+            render_resource
+                .mesh_manager
+                .init_mesh(device, *mesh_id, mesh_asset);
+        }
+        for (texture_id, texture_asset) in &self.uploaded_textures {
+            render_resource
+                .texture_manager
+                .init_texture(device, queue, *texture_id, texture_asset);
+        }
+        for (material_id, material_asset) in &self.uploaded_materials {
+            render_resource.material_manager.init_material(
+                device,
+                *material_id,
+                material_asset,
+                &render_resource.texture_manager,
+            );
+        }
 
         queue.write_buffer(
             &render_resource.camera_buffer,
