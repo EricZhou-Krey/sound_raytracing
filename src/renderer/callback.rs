@@ -13,8 +13,7 @@ use crate::{
         material::GPUMaterial,
         mesh::GPUMesh,
         resource::{
-            GPUCamera, GPULight, GPUObject, GPUTransform, RenderCallbackObjectQueryState,
-            RenderResource,
+            GPUCamera, GPUObject, GPUTransform, RenderCallbackObjectQueryState, RenderResource,
         },
     },
 };
@@ -29,16 +28,19 @@ pub struct RenderCallback {
     pub uploaded_materials: Vec<(MaterialId, MaterialAsset)>,
 }
 
+type AssetCollection = (
+    Vec<(MeshId, MeshAsset)>,
+    Vec<(TextureId, TextureAsset)>,
+    Vec<(MaterialId, MaterialAsset)>,
+);
+
 impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
         let objects: Vec<GPUObject> = Self::extract_objects(world);
-        let (uploaded_meshes, uploaded_textures, uploaded_materials): (
-            Vec<(MeshId, MeshAsset)>,
-            Vec<(TextureId, TextureAsset)>,
-            Vec<(MaterialId, MaterialAsset)>,
-        ) = Self::extract_uploaded_assets(world);
+        let (uploaded_meshes, uploaded_textures, uploaded_materials): AssetCollection =
+            Self::extract_uploaded_assets(world);
 
         Self {
             camera,
@@ -50,13 +52,7 @@ impl RenderCallback {
         }
     }
 
-    fn extract_uploaded_assets(
-        world: &mut bevy_ecs::world::World,
-    ) -> (
-        Vec<(MeshId, MeshAsset)>,
-        Vec<(TextureId, TextureAsset)>,
-        Vec<(MaterialId, MaterialAsset)>,
-    ) {
+    fn extract_uploaded_assets(world: &mut bevy_ecs::world::World) -> AssetCollection {
         let asset_ids: Vec<AssetId> =
             std::mem::take(&mut world.resource_mut::<GPUAssetUploader>().asset_ids);
 
@@ -113,9 +109,11 @@ impl RenderCallback {
             )
     }
 
+    /*
     fn extract_lights(_world: &bevy_ecs::world::World) -> Vec<GPULight> {
         todo!()
     }
+    */
 
     fn extract_camera(world: &bevy_ecs::world::World) -> GPUCamera {
         let active_camera: bevy_ecs::entity::Entity = world.resource::<ActiveCamera>().camera;
@@ -202,7 +200,7 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
 
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, batch.instance_buffer.slice(..));
-            render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
             render_pass.draw_indexed(0..mesh.num_indices, 0, 0..batch.instance_count);
         }

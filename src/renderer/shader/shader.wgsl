@@ -4,19 +4,17 @@ struct Camera {
 };
 @group(0) @binding(0) var<uniform> camera: Camera;
 
-// Light Bind Group @group(2) -> will also need to increment bind groups
 
 struct Material {
     base_color: vec4<f32>,
-    metallic_roughness: vec4<f32>,
 };
 
 @group(1) @binding(0) var<uniform> material: Material;
 @group(1) @binding(1) var base_color_texture: texture_2d<f32>;
 @group(1) @binding(2) var normal_texture: texture_2d<f32>;
-@group(1) @binding(3) var metallic_roughness_texture: texture_2d<f32>;
-@group(1) @binding(4) var occlusion_texture: texture_2d<f32>;
-@group(1) @binding(5) var material_sampler: sampler;
+@group(1) @binding(3) var material_sampler: sampler;
+
+// Light Bind Group @group(2) 
 
 struct VertexInput {
     @location(0) position: vec3<f32>,

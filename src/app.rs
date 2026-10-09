@@ -1,17 +1,9 @@
 use crate::{
-    asset::{
-        loader::load_scene,
-        manager::{MaterialManager, MeshManager, TextureManager},
-        AssetWorldExtension,
-    },
-    component::{
-        camera::{ActiveCamera, Camera, CameraProjection},
-        object::Transform,
-    },
+    asset::AssetWorldExtension,
+    demo::DemoWorldExtension,
     renderer::{resource::init_callback_resources, Renderer},
-    resource::terminal_debug_settings::TerminalDebugSettings,
 };
-use bevy_ecs::{entity::Entity, schedule::Schedule, world::World};
+use bevy_ecs::{schedule::Schedule, world::World};
 use eframe::CreationContext;
 use rook_terminal::{
     command::HelpCommand, event::TerminalCommandRequested, TerminalInputState, TerminalSession,
@@ -28,6 +20,7 @@ impl RaytraceApp {
         let mut world: World = World::new();
         world.setup_terminal();
         world.setup_assets();
+        world.setup_demo();
 
         world.trigger(TerminalCommandRequested {
             raw_command: HelpCommand::name().to_string(),
@@ -35,25 +28,6 @@ impl RaytraceApp {
         world.flush();
 
         init_callback_resources(cc, &mut world);
-
-        let camera: Entity = world
-            .spawn((
-                Camera,
-                Transform {
-                    translation: glam::Vec3::new(0.0, 0.0, -5.0),
-                    rotation: glam::Quat::IDENTITY,
-                    scale: glam::Vec3::ONE,
-                },
-            ))
-            .id();
-
-        world.insert_resource(ActiveCamera { camera });
-        world.insert_resource(CameraProjection {
-            vertical_fov: 60.0_f32.to_radians(),
-            aspect_ratio: 16.0 / 9.0,
-            z_near: 0.1,
-            z_far: 1000.0,
-        });
 
         let schedule: Schedule = Schedule::default();
 
