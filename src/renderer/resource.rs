@@ -51,7 +51,7 @@ impl GPUTransform {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GPUObject {
+pub struct GPUDrawable {
     pub mesh: MeshId,
     pub material: MaterialId,
     pub transform: GPUTransform,
@@ -72,22 +72,23 @@ pub struct RenderResource {
 }
 
 #[derive(Debug, bevy_ecs::resource::Resource)]
-pub struct RenderCallbackObjectQueryState {
-    pub query_state:
+pub struct RenderCallbackDrawableQueryState {
+    pub drawable_query:
         bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
 }
 
-impl RenderCallbackObjectQueryState {
+impl RenderCallbackDrawableQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {
-            query_state: world.query::<(&Transform, &Mesh, &Material)>(),
+            drawable_query: world.query::<(&Transform, &Mesh, &Material)>(),
         }
     }
 }
 
 pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ecs::world::World) {
-    let object_query: RenderCallbackObjectQueryState = RenderCallbackObjectQueryState::new(world);
-    world.insert_resource(object_query);
+    let drawable_query: RenderCallbackDrawableQueryState =
+        RenderCallbackDrawableQueryState::new(world);
+    world.insert_resource(drawable_query);
 
     let wgpu_state: &eframe::egui_wgpu::RenderState =
         cc.wgpu_render_state.as_ref().expect("wgpu not enabled");

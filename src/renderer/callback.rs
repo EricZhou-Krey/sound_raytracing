@@ -13,7 +13,7 @@ use crate::{
         material::GPUMaterial,
         mesh::GPUMesh,
         resource::{
-            GPUCamera, GPUObject, GPUTransform, RenderCallbackObjectQueryState, RenderResource,
+            GPUCamera, GPUDrawable, GPUTransform, RenderCallbackDrawableQueryState, RenderResource,
         },
     },
 };
@@ -22,7 +22,7 @@ use crate::{
 pub struct RenderCallback {
     pub camera: GPUCamera,
     // pub lights: Vec<GPULight>,
-    pub objects: Vec<GPUObject>,
+    pub drawables: Vec<GPUDrawable>,
     pub uploaded_meshes: Vec<(MeshId, MeshAsset)>,
     pub uploaded_textures: Vec<(TextureId, TextureAsset)>,
     pub uploaded_materials: Vec<(MaterialId, MaterialAsset)>,
@@ -38,14 +38,14 @@ impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
         // let lights: Vec<GPULight> = Self::extract_lights(world);
-        let objects: Vec<GPUObject> = Self::extract_objects(world);
+        let drawables: Vec<GPUDrawable> = Self::extract_drawables(world);
         let (uploaded_meshes, uploaded_textures, uploaded_materials): AssetCollection =
             Self::extract_uploaded_assets(world);
 
         Self {
             camera,
             // lights,
-            objects,
+            drawables,
             uploaded_meshes,
             uploaded_textures,
             uploaded_materials,
@@ -86,17 +86,17 @@ impl RenderCallback {
         (uploaded_meshes, uploaded_textures, uploaded_materials)
     }
 
-    fn extract_objects(world: &mut bevy_ecs::world::World) -> Vec<GPUObject> {
+    fn extract_drawables(world: &mut bevy_ecs::world::World) -> Vec<GPUDrawable> {
         world.resource_scope(
                 |world,
                  mut query_state: bevy_ecs::change_detection::Mut<
-                    RenderCallbackObjectQueryState,
+                    RenderCallbackDrawableQueryState,
                 >| {
                     query_state
-                        .query_state
+                        .drawable_query
                         .iter(world)
                         .map(|(transform, mesh, material)| {
-                            GPUObject {
+                            GPUDrawable {
                                 transform: GPUTransform {
                                     model: transform.to_raw(),
                                 },
@@ -171,7 +171,7 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
 
         render_resource
             .instance_manager
-            .update_batches(device, &self.objects);
+            .update_batches(device, &self.drawables);
 
         Vec::new()
     }

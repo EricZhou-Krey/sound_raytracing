@@ -29,15 +29,15 @@ impl InstanceManager {
     pub fn update_batches(
         &mut self,
         device: &wgpu::Device,
-        objects: &[crate::renderer::resource::GPUObject],
+        drawables: &[crate::renderer::resource::GPUDrawable],
     ) {
         let mut batches: HashMap<(MeshId, MaterialId), Vec<GPUTransform>> = HashMap::new();
 
-        for object in objects {
+        for drawable in drawables {
             batches
-                .entry((object.mesh, object.material))
+                .entry((drawable.mesh, drawable.material))
                 .or_default()
-                .push(object.transform);
+                .push(drawable.transform);
         }
 
         self.instance_batches.clear();
