@@ -1,6 +1,6 @@
 use crate::{
     asset::{MeshAsset, TextureAsset},
-    component::object::Transform,
+    component::Transform,
 };
 
 #[derive(Debug, Clone, Default)]

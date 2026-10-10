@@ -8,7 +8,7 @@ use crate::{
     },
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
-        object::{Material, Mesh, Transform},
+        Material, Mesh, Transform,
     },
 };
 use bevy_ecs::{
@@ -48,7 +48,7 @@ impl DemoWorldExtension for World {
             z_far: 1000.0,
         });
 
-        let cube_mesh_id: MeshId = self.resource::<BuiltinAssets>().meshes.cube;
+        let cube_mesh_id: MeshId = self.resource::<BuiltinAssets>().meshes.sphere;
         let flat_normal_id: TextureId = self.resource::<BuiltinAssets>().textures.flat_normal;
 
         let base_color_texture_id: TextureId = self

@@ -3,7 +3,7 @@ use crate::{
         id::{MaterialId, MeshId},
         Vertex,
     },
-    component::object::{Material, Mesh, Transform},
+    component::{Material, Mesh, PointLight, Transform},
     renderer::{
         instance::InstanceManager, material::MaterialManager, mesh::MeshManager,
         texture::TextureManager,
@@ -20,11 +20,8 @@ pub struct GPUCamera {
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPULight {
-    pub position: [f32; 3],
-    pub radius: f32,
-
-    pub color: [f32; 3],
-    pub intensity: [f32; 3],
+    pub position_range: [f32; 4],
+    pub color_intensity: [f32; 4],
 }
 
 #[repr(C)]
@@ -75,12 +72,14 @@ pub struct RenderResource {
 pub struct RenderCallbackDrawableQueryState {
     pub drawable_query:
         bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
+    pub light_query: bevy_ecs::query::QueryState<(&'static Transform, &'static PointLight)>,
 }
 
 impl RenderCallbackDrawableQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {
             drawable_query: world.query::<(&Transform, &Mesh, &Material)>(),
+            light_query: world.query::<(&Transform, &PointLight)>(),
         }
     }
 }

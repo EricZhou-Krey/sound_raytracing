@@ -7,13 +7,14 @@ use crate::{
     },
     component::{
         camera::{ActiveCamera, CameraProjection},
-        object::Transform,
+        Material, Mesh, PointLight, Transform,
     },
     renderer::{
         material::GPUMaterial,
         mesh::GPUMesh,
         resource::{
-            GPUCamera, GPUDrawable, GPUTransform, RenderCallbackDrawableQueryState, RenderResource,
+            GPUCamera, GPUDrawable, GPULight, GPUTransform, RenderCallbackDrawableQueryState,
+            RenderResource,
         },
     },
 };
@@ -21,7 +22,7 @@ use crate::{
 #[derive(Default, Debug, PartialEq)]
 pub struct RenderCallback {
     pub camera: GPUCamera,
-    // pub lights: Vec<GPULight>,
+    pub lights: Vec<GPULight>,
     pub drawables: Vec<GPUDrawable>,
     pub uploaded_meshes: Vec<(MeshId, MeshAsset)>,
     pub uploaded_textures: Vec<(TextureId, TextureAsset)>,
@@ -37,14 +38,26 @@ type AssetCollection = (
 impl RenderCallback {
     pub fn extract_from_world(world: &mut bevy_ecs::world::World) -> Self {
         let camera: GPUCamera = Self::extract_camera(world);
-        // let lights: Vec<GPULight> = Self::extract_lights(world);
-        let drawables: Vec<GPUDrawable> = Self::extract_drawables(world);
+
+        let (drawables, lights): (Vec<GPUDrawable>, Vec<GPULight>) =
+            world.resource_scope(
+                |world,
+                 mut query_state: bevy_ecs::change_detection::Mut<
+                    RenderCallbackDrawableQueryState,
+                >| {
+                    (
+                        Self::extract_drawables(world, &mut query_state.drawable_query),
+                        Self::extract_lights(world, &mut query_state.light_query),
+                    )
+                },
+            );
+
         let (uploaded_meshes, uploaded_textures, uploaded_materials): AssetCollection =
             Self::extract_uploaded_assets(world);
 
         Self {
             camera,
-            // lights,
+            lights,
             drawables,
             uploaded_meshes,
             uploaded_textures,
@@ -86,34 +99,48 @@ impl RenderCallback {
         (uploaded_meshes, uploaded_textures, uploaded_materials)
     }
 
-    fn extract_drawables(world: &mut bevy_ecs::world::World) -> Vec<GPUDrawable> {
-        world.resource_scope(
-                |world,
-                 mut query_state: bevy_ecs::change_detection::Mut<
-                    RenderCallbackDrawableQueryState,
-                >| {
-                    query_state
-                        .drawable_query
-                        .iter(world)
-                        .map(|(transform, mesh, material)| {
-                            GPUDrawable {
-                                transform: GPUTransform {
-                                    model: transform.to_raw(),
-                                },
-                                mesh: mesh.id,
-                                material: material.id,
-                            }
-                        })
-                        .collect()
+    fn extract_drawables(
+        world: &mut bevy_ecs::world::World,
+        drawable_query: &mut bevy_ecs::query::QueryState<(
+            &'static Transform,
+            &'static Mesh,
+            &'static Material,
+        )>,
+    ) -> Vec<GPUDrawable> {
+        drawable_query
+            .iter(world)
+            .map(|(transform, mesh, material)| GPUDrawable {
+                transform: GPUTransform {
+                    model: transform.to_raw(),
                 },
-            )
+                mesh: mesh.id,
+                material: material.id,
+            })
+            .collect()
     }
 
-    /*
-    fn extract_lights(_world: &bevy_ecs::world::World) -> Vec<GPULight> {
-        todo!()
+    fn extract_lights(
+        world: &bevy_ecs::world::World,
+        light_query: &mut bevy_ecs::query::QueryState<(&'static Transform, &'static PointLight)>,
+    ) -> Vec<GPULight> {
+        light_query
+            .iter(world)
+            .map(|(transform, point_light)| GPULight {
+                position_range: [
+                    transform.translation.x,
+                    transform.translation.y,
+                    transform.translation.z,
+                    point_light.range,
+                ],
+                color_intensity: [
+                    point_light.color[0],
+                    point_light.color[1],
+                    point_light.color[2],
+                    point_light.intensity,
+                ],
+            })
+            .collect()
     }
-    */
 
     fn extract_camera(world: &bevy_ecs::world::World) -> GPUCamera {
         let active_camera: bevy_ecs::entity::Entity = world.resource::<ActiveCamera>().camera;

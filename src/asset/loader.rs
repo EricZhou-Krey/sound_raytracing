@@ -12,7 +12,7 @@ use crate::{
         source::{MaterialSource, MeshSource, SceneSource, TextureSource},
         MaterialAsset, MeshAsset, TextureAsset,
     },
-    component::object::{Material, Mesh},
+    component::{Material, Mesh},
 };
 
 #[derive(Default, Debug, Resource)]

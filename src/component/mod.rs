@@ -1,40 +1,4 @@
-use bevy_ecs::{component::Component, resource::Resource};
-use glam::Vec3;
-use kira::sound::static_sound::StaticSoundData;
-
-#[derive(Component)]
-pub struct FacingDirection {
-    pub direction: Vec3,
-}
-#[derive(Component)]
-pub struct Ray {
-    pub origin: Vec3,
-    pub direction: Vec3,
-}
-#[derive(Component)]
-pub struct CollisionPath {
-    pub path: Vec3,
-}
-#[derive(Component)]
-pub struct Lifetime {
-    pub time: f32,
-}
-#[derive(Resource)]
-pub struct SpeedOfSoundRay {
-    pub speed: f32,
-}
-#[derive(Component)]
-pub struct SoundData {
-    pub data: StaticSoundData,
-}
-#[derive(Component)]
-pub struct Amplitude {
-    pub amplitude: f32,
-}
-#[derive(Component)]
-pub struct AudioOrigin {
-    pub origin: Vec3,
-}
+use crate::asset::id::{MaterialId, MeshId, TextureId};
 
 pub mod acoustic_geometry;
 pub mod acoustic_material;
@@ -42,4 +6,44 @@ pub mod acoustic_receiver;
 pub mod acoustic_source;
 pub mod camera;
 pub mod debug;
-pub mod object;
+
+#[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
+pub struct Mesh {
+    pub id: MeshId,
+}
+
+#[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
+pub struct Texture {
+    pub id: TextureId,
+}
+
+#[derive(Debug, Clone, bevy_ecs::component::Component, PartialEq)]
+pub struct Material {
+    pub id: MaterialId,
+}
+
+#[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
+pub struct Transform {
+    pub scale: glam::Vec3,
+    pub translation: glam::Vec3,
+    pub rotation: glam::Quat,
+}
+
+impl Transform {
+    pub fn to_raw(&self) -> [[f32; 4]; 4] {
+        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+            .to_cols_array_2d()
+    }
+    pub fn to_inverse_raw(&self) -> [[f32; 4]; 4] {
+        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+            .inverse()
+            .to_cols_array_2d()
+    }
+}
+
+#[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
+pub struct PointLight {
+    pub color: [f32; 3],
+    pub intensity: f32,
+    pub range: f32,
+}
