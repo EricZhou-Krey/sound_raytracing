@@ -8,7 +8,7 @@ use crate::{
     },
     component::{
         camera::{ActiveCamera, Camera, CameraProjection},
-        Material, Mesh, Transform,
+        Light, Material, Mesh, Transform,
     },
 };
 use bevy_ecs::{
@@ -26,7 +26,7 @@ pub trait DemoWorldExtension {
 
 impl DemoWorldExtension for World {
     fn setup_demo(&mut self) {
-        let camera_position: Vec3 = Vec3::new(2.0, -2.0, 5.0);
+        let camera_position: Vec3 = Vec3::new(5.0, -5.0, 5.0);
         let direction: Vec3 = (Vec3::ZERO - camera_position).normalize();
 
         let camera: Entity = self
@@ -47,6 +47,45 @@ impl DemoWorldExtension for World {
             z_near: 0.1,
             z_far: 1000.0,
         });
+
+        self.spawn((
+            Light {
+                color: [100.0, 50.0, 50.0],
+                intensity: 0.01,
+                range: 1000.0,
+            },
+            Transform {
+                translation: Vec3::new(5.0, 0.0, 0.0),
+                rotation: glam::Quat::IDENTITY,
+                scale: Vec3::ONE,
+            },
+        ));
+
+        self.spawn((
+            Light {
+                color: [50.0, 100.0, 50.0],
+                intensity: 0.01,
+                range: 1000.0,
+            },
+            Transform {
+                translation: Vec3::new(0.0, 5.0, 0.0),
+                rotation: glam::Quat::IDENTITY,
+                scale: Vec3::ONE,
+            },
+        ));
+
+        self.spawn((
+            Light {
+                color: [50.0, 50.0, 100.0],
+                intensity: 0.01,
+                range: 1000.0,
+            },
+            Transform {
+                translation: Vec3::new(0.0, 0.0, 5.0),
+                rotation: glam::Quat::IDENTITY,
+                scale: Vec3::ONE,
+            },
+        ));
 
         let cube_mesh_id: MeshId = self.resource::<BuiltinAssets>().meshes.sphere;
         let flat_normal_id: TextureId = self.resource::<BuiltinAssets>().textures.flat_normal;
@@ -94,27 +133,15 @@ pub trait DemoScheduleExtension {
 
 impl DemoScheduleExtension for Schedule {
     fn setup_demo(&mut self) {
-        self.add_systems(rotate_camera_around_origin);
+        self.add_systems(rotate_objects);
     }
 }
 
-fn rotate_camera_around_origin(
-    mut transforms: Query<&mut Transform, With<Camera>>,
+fn rotate_objects(
+    mut transforms: Query<&mut Transform, (With<Material>, With<Mesh>)>,
     dt: Res<FrameDelta>,
 ) {
     for mut transform in transforms.iter_mut() {
-        let offset: Vec3 = transform.translation;
-        let radius: f32 = offset.x.hypot(offset.z);
-        if radius == 0.0 {
-            return;
-        }
-
-        let angle: f32 = offset.z.atan2(offset.x) + 0.5 * dt.0;
-
-        transform.translation.x = radius * angle.cos();
-        transform.translation.z = radius * angle.sin();
-
-        let direction: Vec3 = (glam::Vec3::ZERO - transform.translation).normalize();
-        transform.rotation = glam::Quat::from_rotation_arc(glam::Vec3::NEG_Z, direction);
+        transform.rotation *= glam::Quat::from_axis_angle(Vec3::Y, dt.0);
     }
 }

@@ -3,12 +3,14 @@ use crate::{
         id::{MaterialId, MeshId},
         Vertex,
     },
-    component::{Material, Mesh, PointLight, Transform},
+    component::{Light, Material, Mesh, Transform},
     renderer::{
         instance::InstanceManager, material::MaterialManager, mesh::MeshManager,
         texture::TextureManager,
     },
 };
+
+pub const MAX_N_LIGHTS: usize = 256;
 
 #[repr(C)]
 #[derive(Default, Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -22,6 +24,14 @@ pub struct GPUCamera {
 pub struct GPULight {
     pub position_range: [f32; 4],
     pub color_intensity: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, PartialEq, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GPULightUniform {
+    pub lights: [GPULight; MAX_N_LIGHTS],
+    pub count: u32,
+    pub _pad: [u32; 3],
 }
 
 #[repr(C)]
@@ -64,22 +74,23 @@ pub struct RenderResource {
 
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
-    // pub light_buffer: wgpu::Buffer,
-    // pub light_bind_group: wgpu::BindGroup,
+
+    pub light_buffer: wgpu::Buffer,
+    pub light_bind_group: wgpu::BindGroup,
 }
 
 #[derive(Debug, bevy_ecs::resource::Resource)]
 pub struct RenderCallbackDrawableQueryState {
     pub drawable_query:
         bevy_ecs::query::QueryState<(&'static Transform, &'static Mesh, &'static Material)>,
-    pub light_query: bevy_ecs::query::QueryState<(&'static Transform, &'static PointLight)>,
+    pub light_query: bevy_ecs::query::QueryState<(&'static Transform, &'static Light)>,
 }
 
 impl RenderCallbackDrawableQueryState {
     pub fn new(world: &mut bevy_ecs::world::World) -> Self {
         Self {
             drawable_query: world.query::<(&Transform, &Mesh, &Material)>(),
-            light_query: world.query::<(&Transform, &PointLight)>(),
+            light_query: world.query::<(&Transform, &Light)>(),
         }
     }
 }
@@ -182,19 +193,51 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
         ..Default::default()
     });
 
+    let light_buffer: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("Light Buffer"),
+        size: std::mem::size_of::<GPULightUniform>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let light_bind_group_layout: wgpu::BindGroupLayout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Light Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+    let light_bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("Light Bind Group"),
+        layout: &light_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: light_buffer.as_entire_binding(),
+        }],
+    });
+
     let pipeline_layout: wgpu::PipelineLayout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[
                 Some(&camera_bind_group_layout),
                 Some(&material_bind_group_layout),
+                Some(&light_bind_group_layout),
             ],
             immediate_size: 0,
         });
 
     let pipeline: wgpu::RenderPipeline =
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Room Render Pipeline"),
+            label: Some("Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -234,7 +277,8 @@ pub fn init_callback_resources(cc: &eframe::CreationContext, world: &mut bevy_ec
 
             camera_buffer,
             camera_bind_group,
-            // light_buffer,
-            // light_bind_group,
+
+            light_buffer,
+            light_bind_group,
         });
 }

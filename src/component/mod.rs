@@ -42,7 +42,7 @@ impl Transform {
 }
 
 #[derive(Default, bevy_ecs::component::Component, Debug, Clone, PartialEq)]
-pub struct PointLight {
+pub struct Light {
     pub color: [f32; 3],
     pub intensity: f32,
     pub range: f32,

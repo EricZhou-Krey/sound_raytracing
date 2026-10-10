@@ -1,3 +1,5 @@
+use bytemuck::Zeroable;
+
 use crate::{
     asset::{
         id::{AssetId, MaterialId, MeshId, TextureId},
@@ -7,14 +9,14 @@ use crate::{
     },
     component::{
         camera::{ActiveCamera, CameraProjection},
-        Material, Mesh, PointLight, Transform,
+        Light, Material, Mesh, Transform,
     },
     renderer::{
         material::GPUMaterial,
         mesh::GPUMesh,
         resource::{
-            GPUCamera, GPUDrawable, GPULight, GPUTransform, RenderCallbackDrawableQueryState,
-            RenderResource,
+            GPUCamera, GPUDrawable, GPULight, GPULightUniform, GPUTransform,
+            RenderCallbackDrawableQueryState, RenderResource, MAX_N_LIGHTS,
         },
     },
 };
@@ -121,7 +123,7 @@ impl RenderCallback {
 
     fn extract_lights(
         world: &bevy_ecs::world::World,
-        light_query: &mut bevy_ecs::query::QueryState<(&'static Transform, &'static PointLight)>,
+        light_query: &mut bevy_ecs::query::QueryState<(&'static Transform, &'static Light)>,
     ) -> Vec<GPULight> {
         light_query
             .iter(world)
@@ -190,6 +192,18 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
             );
         }
 
+        let mut light_uniform: GPULightUniform = GPULightUniform::zeroed();
+        let light_count: usize = self.lights.len().min(MAX_N_LIGHTS);
+
+        light_uniform.count = light_count as u32;
+        light_uniform.lights[..light_count].copy_from_slice(&self.lights[..light_count]);
+
+        queue.write_buffer(
+            &render_resource.light_buffer,
+            0,
+            bytemuck::bytes_of(&light_uniform),
+        );
+
         queue.write_buffer(
             &render_resource.camera_buffer,
             0,
@@ -212,7 +226,7 @@ impl eframe::egui_wgpu::CallbackTrait for RenderCallback {
         let render_resource: &RenderResource = callback_resources.get().unwrap();
         render_pass.set_pipeline(&render_resource.pipeline);
         render_pass.set_bind_group(0, &render_resource.camera_bind_group, &[]);
-        // Light bind group
+        render_pass.set_bind_group(2, &render_resource.light_bind_group, &[]);
 
         for batch in &render_resource.instance_manager.instance_batches {
             let mesh: &GPUMesh = render_resource.mesh_manager.meshes.get(batch.mesh).unwrap();
